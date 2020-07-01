@@ -109,7 +109,7 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 		codec->Init(4);
 		afflicted_players.insert(std::pair<int, IVoiceCodec*>(id, codec));
 	}
-	else {
+	else if(afflicted_players.find(id) != afflicted_players.end()) {
 		IVoiceCodec* codec = afflicted_players.at(id);
 		codec->Release();
 		afflicted_players.erase(id);
