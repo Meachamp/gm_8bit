@@ -1,7 +1,7 @@
 #include <GarrysMod/Lua/Interface.h>
 #include <GarrysMod/FactoryLoader.hpp>
 #include <scanning/symbolfinder.hpp>
-#include <detouring/detours.h>
+#include <detouring/hook.hpp>
 #include <iostream>
 #include <cbase.h>
 #include <eifacev21.h>
@@ -25,7 +25,7 @@
 	#error Missing signatures for this system!
 #endif
 
-static int crushFactor = 8;
+static int crushFactor = 700;
 static short decompressedBuffer[11500];
 static char recompressBuffer[11500*2];
 static IVEngineServer* engine_ptr = nullptr;
@@ -33,7 +33,7 @@ CreateInterfaceFn speexFactory = nullptr;
 static bool didInit = false;
 
 typedef void (*SV_BroadcastVoiceData)(IClient* cl, int nBytes, char* data, int64 xuid);
-MologieDetours::Detour<SV_BroadcastVoiceData>* detour_BroadcastVoiceData = nullptr;
+Detouring::Hook detour_BroadcastVoiceData;
 
 std::unordered_map<int, IVoiceCodec*> afflicted_players;
 
@@ -52,7 +52,7 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 		if (samples <= 0) {
 			//Just hit the trampoline at this point.
 			std::cout << "Decompression failed: " << samples << std::endl;
-			return detour_BroadcastVoiceData->GetOriginalFunction()(cl, nBytes, data, xuid);
+			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 		}
 
 		//Bit crush the stream
@@ -71,10 +71,10 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer, sizeof(recompressBuffer), true);
 
 		//Broadcast voice data with our update compressed data.
-		return detour_BroadcastVoiceData->GetOriginalFunction()(cl, bytesWritten, recompressBuffer, xuid);
+		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, bytesWritten, recompressBuffer, xuid);
 	}
 	else {
-		return detour_BroadcastVoiceData->GetOriginalFunction()(cl, nBytes, data, xuid);
+		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 	}
 }
 
@@ -165,13 +165,8 @@ GMOD_MODULE_OPEN()
 		return 0;
 	}
 
-	try {
-		detour_BroadcastVoiceData = new MologieDetours::Detour<SV_BroadcastVoiceData>((SV_BroadcastVoiceData)sv_bcast, hook_BroadcastVoiceData);
-	}
-	catch (...) {
-		std::cout << "SV_BroadcastVoiceData Detour failed!" << std::endl;
-		return 0;
-	}
+	detour_BroadcastVoiceData.Create(Detouring::Hook::Target(sv_bcast), reinterpret_cast<void*>(&hook_BroadcastVoiceData));
+	detour_BroadcastVoiceData.Enable();
 
 	afflicted_players = std::unordered_map<int, IVoiceCodec*>();
 
@@ -183,7 +178,7 @@ GMOD_MODULE_OPEN()
 
 GMOD_MODULE_CLOSE()
 {
-	delete detour_BroadcastVoiceData;
+	detour_BroadcastVoiceData.Destroy();
 	speexFactory = nullptr;
 	engine_ptr = nullptr;
 	didInit = false;
