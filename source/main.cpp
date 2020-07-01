@@ -100,7 +100,7 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 		return 0;
 	}
 
-	if (afflicted_players.find(id) == afflicted_players.end() && b) {
+	if (afflicted_players.find(id) != afflicted_players.end() && b) {
 		return 0;
 	}
 
