@@ -100,7 +100,11 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 		return 0;
 	}
 
-	if (b && afflicted_players.find(id) == afflicted_players.end()) {
+	if (afflicted_players.find(id) == afflicted_players.end() && b) {
+		return 0;
+	}
+
+	if (b) {
 		IVoiceCodec* codec = (IVoiceCodec*)speexFactory("vaudio_speex", nullptr);
 		codec->Init(4);
 		afflicted_players.insert(std::pair<int, IVoiceCodec*>(id, codec));
