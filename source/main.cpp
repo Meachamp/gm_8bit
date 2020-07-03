@@ -9,28 +9,21 @@
 #include <ivoicecodec.h>
 #include <unordered_map>
 
-#if defined SYSTEM_WINDOWS
-	#define WIN32_LEAN_AND_MEAN
-	#include <windows.h>
-#elif defined SYSTEM_LINUX
-	#include <dlfcn.h>
-#endif
 
-#if defined SYSTEM_WINDOWS && defined ARCHITECTURE_X86_64
-	static const uint8_t GMOD_SV_BroadcastVoice_sym_sig[] = "\x48\x89\x5C\x24\x20\x56\x57\x41\x56\x48\x81\xEC\xA0\x00\x00\x00";
-	static const size_t GMOD_SV_BroadcastVoice_siglen = sizeof(GMOD_SV_BroadcastVoice_sym_sig) - 1;
-#elif defined SYSTEM_LINUX && defined ARCHITECTURE_X86
-	static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
-#else
-	#error Missing signatures for this system!
-#endif
+#include <dlfcn.h>
+
+
+static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
+static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x78\x00\x00\x00\xE8****\x89\xC6";
+static const size_t CreateSilkCodec_siglen = sizeof(CreateSilkCodec_sig) - 1;
 
 static int crushFactor = 700;
-static short decompressedBuffer[11500];
-static char recompressBuffer[11500*2];
-static IVEngineServer* engine_ptr = nullptr;
-CreateInterfaceFn speexFactory = nullptr;
+static short decompressedBuffer[11500*2];
+static char recompressBuffer[11500*4];
 static bool didInit = false;
+
+typedef IVoiceCodec* (*CreateSilkCodecProto)();
+CreateSilkCodecProto func_CreateSilkCodec;
 
 typedef void (*SV_BroadcastVoiceData)(IClient* cl, int nBytes, char* data, int64 xuid);
 Detouring::Hook detour_BroadcastVoiceData;
@@ -78,12 +71,9 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 	}
 }
 
-void LoadSpeex() {
-	#ifdef SYSTEM_WINDOWS
-		LoadLibrary("bin/win64/vaudio_speex.dll");
-	#elif SYSTEM_LINUX
-		dlopen("bin/vaudio_speex.so", RTLD_NOW);
-	#endif
+void* LoadSteamclient() {
+	void* module = dlopen("bin/steamclient.so", RTLD_NOW);
+	return module;
 }
 
 LUA_FUNCTION_STATIC(zsutil_crush) {
@@ -105,8 +95,8 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 	}
 
 	if (b) {
-		IVoiceCodec* codec = (IVoiceCodec*)speexFactory("vaudio_speex", nullptr);
-		codec->Init(4);
+		IVoiceCodec* codec = func_CreateSilkCodec();
+		codec->Init(4, 16000);
 		afflicted_players.insert(std::pair<int, IVoiceCodec*>(id, codec));
 	}
 	else if(afflicted_players.find(id) != afflicted_players.end()) {
@@ -144,34 +134,25 @@ GMOD_MODULE_OPEN()
 		return 0;
 	}
 
-	engine_ptr = engine_loader.GetInterface<IVEngineServer>("VEngineServer021");
-	if (engine_ptr == nullptr) {
-		std::cout << "Could not locate IVEngineServer!" << std::endl;
-		return 0;
-	}
+	LoadSteamclient();
 
-	LoadSpeex();
+	SourceSDK::FactoryLoader steamclient_loader("steamclient");
+	std::cout << steamclient_loader.GetModule() << std::endl;
+	void *codecPtr = symfinder.FindPattern(steamclient_loader.GetModule(), CreateSilkCodec_sig, CreateSilkCodec_siglen);
 	
-	SourceSDK::FactoryLoader speex("vaudio_speex");
-	if (speex.GetModule() == nullptr) {
-		std::cout << "Could not load Speex!" << std::endl;
+	if (codecPtr == nullptr) {
+		std::cout << "Could not locate CreateSilkCodec!" << std::endl;
 		return 0;
 	}
 
-	speexFactory = speex.GetFactory();
+	std::cout << codecPtr << std::endl;
 
-	if (speexFactory == nullptr) {
-		std::cout << "Could not access Speex Factory!" << std::endl;
-		return 0;
-	}
+	func_CreateSilkCodec = (CreateSilkCodecProto)codecPtr;
 
 	detour_BroadcastVoiceData.Create(Detouring::Hook::Target(sv_bcast), reinterpret_cast<void*>(&hook_BroadcastVoiceData));
 	detour_BroadcastVoiceData.Enable();
 
 	afflicted_players = std::unordered_map<int, IVoiceCodec*>();
-
-	//If we want to use the speex codec, we need to disable steam voice to force it to be used by clients.
-	engine_ptr->GMOD_RawServerCommand("sv_use_steam_voice 0");
 	didInit = true;
 	return 0;
 }
@@ -179,9 +160,8 @@ GMOD_MODULE_OPEN()
 GMOD_MODULE_CLOSE()
 {
 	detour_BroadcastVoiceData.Destroy();
-	speexFactory = nullptr;
-	engine_ptr = nullptr;
 	didInit = false;
+	func_CreateSilkCodec = nullptr;
 
 	for (auto& p : afflicted_players) {
 		if (p.second != nullptr) {
