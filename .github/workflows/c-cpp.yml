@@ -19,6 +19,8 @@ jobs:
       run: |
         wget https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha15-linux.tar.gz -O premake.tar.gz
         sudo tar -xvf premake.tar.gz --directory=/usr/bin
+        sudo apt-get update
+        sudo apt-get install g++-multilib
     - name: Generate Project
       run: |
         premake5 --gmcommon=garrysmod_common gmake
