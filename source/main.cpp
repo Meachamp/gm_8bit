@@ -109,11 +109,6 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	}
 }
 
-void* LoadSteamclient() {
-	void* module = dlopen("bin/steamclient.so", RTLD_NOW);
-	return module;
-}
-
 LUA_FUNCTION_STATIC(zsutil_crush) {
 	crushFactor = (int)LUA->GetNumber(1);
 	return 0;
@@ -125,7 +120,6 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 
 	if (!didInit) {
 		LUA->ThrowError("Module did not successfully init!");
-		return 0;
 	}
 
 	if (afflicted_players.find(id) != afflicted_players.end() && b) {
@@ -168,19 +162,17 @@ GMOD_MODULE_OPEN()
 		void* sv_bcast = symfinder.FindSymbol(engine_loader.GetModule(), GMOD_SV_BroadcastVoice_sym_sig);
 	#endif
 	if (sv_bcast == nullptr) {
-		std::cout << "Could not locate SV_BrodcastVoice symbol!" << std::endl;
-		return 0;
+		LUA->ThrowError("Could not locate SV_BrodcastVoice symbol!");
 	}
 
-	LoadSteamclient();
-
 	SourceSDK::FactoryLoader steamclient_loader("steamclient");
-	std::cout << steamclient_loader.GetModule() << std::endl;
+	if(steamclient_loader.GetModule() == nullptr) {
+		LUA->ThrowError("Could not load steamclient!");
+	}
 	void *codecPtr = symfinder.FindPattern(steamclient_loader.GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
 	
 	if (codecPtr == nullptr) {
-		std::cout << "Could not locate CreateOpusPLCCodec!" << std::endl;
-		return 0;
+		LUA->ThrowError("Could not locate CreateOpusPLCCodec!");
 	}
 
 	func_CreateOpusPLCCodec = (CreateOpusPLCCodecProto)codecPtr;
