@@ -21,7 +21,8 @@ jobs:
         sudo tar -xvf premake.tar.gz --directory=/usr/bin
     - name: Generate Project
       run: |
-        cd projects/linux/gmake
         premake5 --gmcommon=garrysmod_common gmake
     - name: Make
-      run: make
+      run: |
+        cd projects/linux/gmake
+        make
