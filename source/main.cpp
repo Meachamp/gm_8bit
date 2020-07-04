@@ -14,7 +14,7 @@
 
 
 static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
-static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8\xA3\xDC\xD0\xFF\x81\xC3\xF4\xE9\x40\x01\x83\xEC";
+static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8\x03\xDC\xD0\xFF\x81\xC3\x54\xE9\x40\x01\x83\xEC";
 //static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x78\x00\x00\x00\xE8****\x89\xC6";
 static const size_t CreateSilkCodec_siglen = sizeof(CreateSilkCodec_sig) - 1;
 
@@ -37,21 +37,23 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 	//If not in the set, just hit the trampoline to ensure default behavior. 
 	int uid = cl->GetUserID();
 	if (afflicted_players.find(uid) != afflicted_players.end()) {
-		//Decompress the stream with vaudio_speex
-		//Produces signed 16-bit PCM samples @ 11025 Hz
-		//Output is # samples produced.
 		IVoiceCodec* codec = afflicted_players.at(uid);
-		std::cout << "Decomp" << nBytes << std::endl;
 
-		if(nBytes < 12) return;
+		std::cout << "Received packet of length: " << nBytes << std::endl;
 
-		int samples = codec->Decompress(data + 8, nBytes - 8, (char*)decompressedBuffer, sizeof(decompressedBuffer));
-		//Speex will return a negative (or zeroed) number if decompression fails. 
+		if(nBytes < (0xE + 0x4) || data[0xB] != 6) {
+			std::cout << "Ignoring voice packet." << std::endl;
+			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
+		}
+
+		int samples = codec->Decompress(data + 0xE, nBytes - 0xE - 0x4, (char*)decompressedBuffer, sizeof(decompressedBuffer));
 		if (samples <= 0) {
 			//Just hit the trampoline at this point.
 			std::cout << "Decompression failed: " << samples << std::endl;
 			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 		}
+
+		std::cout << "Decompressed samples " << samples << std::endl;
 
 		//Bit crush the stream
 		for (int i = 0; i < samples; i++) {
@@ -63,6 +65,10 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 			f /= crushFactor;
 			*ptr = (short)f;
 			*ptr *= crushFactor;
+		}
+
+		if(true) {
+			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 		}
 
 		//Recompress the stream
