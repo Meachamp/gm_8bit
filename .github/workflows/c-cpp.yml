@@ -28,3 +28,7 @@ jobs:
       run: |
         cd projects/linux/gmake
         make
+    - uses: actions/upload-artifact@v2
+      with:
+        name: gmsv_eightbit_linux.dll
+        path: project/linux/gmake/x86/ReleaseWithSymbols/gmsv_eightbit_linux.dll
