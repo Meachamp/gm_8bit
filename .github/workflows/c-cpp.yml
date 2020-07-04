@@ -14,8 +14,10 @@ jobs:
         submodules: recursive
         repository: danielga/garrysmod_common
         ref: master
+        path: 'garrysmod_common'
     - name: Install Premake
       run: |
+        ls
         wget https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha15-linux.tar.gz -O premake.tar.gz
         sudo tar -xvf premake.tar.gz --directory=/usr/bin
     - name: Generate Project
