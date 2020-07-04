@@ -14,7 +14,8 @@
 
 
 static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
-static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x78\x00\x00\x00\xE8****\x89\xC6";
+static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8\xA3\xDC\xD0\xFF\x81\xC3\xF4\xE9\x40\x01\x83\xEC";
+//static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x78\x00\x00\x00\xE8****\x89\xC6";
 static const size_t CreateSilkCodec_siglen = sizeof(CreateSilkCodec_sig) - 1;
 
 static int crushFactor = 700;
@@ -40,7 +41,11 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 		//Produces signed 16-bit PCM samples @ 11025 Hz
 		//Output is # samples produced.
 		IVoiceCodec* codec = afflicted_players.at(uid);
-		int samples = codec->Decompress(data, nBytes, (char*)decompressedBuffer, sizeof(decompressedBuffer));
+		std::cout << "Decomp" << nBytes << std::endl;
+
+		if(nBytes < 12) return;
+
+		int samples = codec->Decompress(data + 8, nBytes - 8, (char*)decompressedBuffer, sizeof(decompressedBuffer));
 		//Speex will return a negative (or zeroed) number if decompression fails. 
 		if (samples <= 0) {
 			//Just hit the trampoline at this point.
@@ -96,7 +101,7 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 
 	if (b) {
 		IVoiceCodec* codec = func_CreateSilkCodec();
-		codec->Init(4, 16000);
+		codec->Init(5, 24000);
 		afflicted_players.insert(std::pair<int, IVoiceCodec*>(id, codec));
 	}
 	else if(afflicted_players.find(id) != afflicted_players.end()) {
