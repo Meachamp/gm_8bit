@@ -8,13 +8,23 @@
 #include <eifacev21.h>
 #include <ivoicecodec.h>
 #include <unordered_map>
-#include <dlfcn.h>
 #include "checksum_crc.h"
 
+#ifdef SYSTEM_WINDOWS
+	#include <windows.h>
+	static const uint8_t GMOD_SV_BroadcastVoice_sym_sig[] = "\x55\x8B\xEC\x8B\x0D****\x83\xEC\x58\x81\xF9****";
+	static const size_t GMOD_SV_BroadcastVoice_siglen = sizeof(GMOD_SV_BroadcastVoice_sym_sig) - 1;
 
-static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
-static const uint8_t CreateOpusPLCCodec_sig[] = "\x57\x56\x53\xE8\x03\xDC\xD0\xFF\x81\xC3\x54\xE9\x40\x01\x83\xEC";
-static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
+	static const uint8_t CreateOpusPLCCodec_sig[] = "\x56\x6A\x48\xE8\x98\x1B\x49\x00\x8B\xF0\x83\xC4\x04\x33\xC0\x85";
+	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
+#endif
+
+#ifdef SYSTEM_LINUX
+	#include <dlfcn.h>
+	static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
+	static const uint8_t CreateOpusPLCCodec_sig[] = "\x57\x56\x53\xE8\x03\xDC\xD0\xFF\x81\xC3\x54\xE9\x40\x01\x83\xEC";
+	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
+#endif
 
 static int crushFactor = 700;
 static bool didInit = false;
