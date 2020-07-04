@@ -17,13 +17,11 @@ jobs:
         path: 'garrysmod_common'
     - name: Install Premake
       run: |
-        ls
         wget https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha15-linux.tar.gz -O premake.tar.gz
         sudo tar -xvf premake.tar.gz --directory=/usr/bin
     - name: Generate Project
       run: |
-        ls
-        premake5 --gmcommon=garrysmod_common gmake
         cd projects/linux/gmake
+        premake5 --gmcommon=garrysmod_common gmake
     - name: Make
       run: make
