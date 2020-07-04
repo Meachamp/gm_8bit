@@ -9,7 +9,6 @@
 #include <ivoicecodec.h>
 #include <unordered_map>
 #include <dlfcn.h>
-
 #include "checksum_crc.h"
 
 
@@ -24,9 +23,9 @@ static bool didInit = false;
 #define OFFSET_TO_VOICE_SZ 0xC
 #define OFFSET_TO_CODEC_OP 0xB
 #define CODEC_OP_OPUSPLC 6
-static short decompressedBuffer[11500*2];
-static char recompressBuffer[11500*4];
-
+#define MIN_PCKT_SZ VOICE_DATA_SZ + sizeof(CRC32_t)
+static char decompressedBuffer[20 * 1024];
+static char recompressBuffer[20 * 1024];
 
 typedef IVoiceCodec* (*CreateOpusPLCCodecProto)();
 CreateOpusPLCCodecProto func_CreateOpusPLCCodec;
@@ -44,10 +43,19 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	if (afflicted_players.find(uid) != afflicted_players.end()) {
 		IVoiceCodec* codec = afflicted_players.at(uid);
 
-		std::cout << "Received packet of length: " << nBytes << std::endl;
+		#ifdef _DEBUG
+			std::cout << "Received packet of length: " << nBytes << std::endl;
+		#endif
 
-		if(nBytes < (VOICE_DATA_SZ + sizeof(CRC32_t)) || data[OFFSET_TO_CODEC_OP] != CODEC_OP_OPUSPLC) {
-			std::cout << "Ignoring voice packet." << std::endl;
+		if(nBytes < MIN_PCKT_SZ || data[OFFSET_TO_CODEC_OP] != CODEC_OP_OPUSPLC) {
+			#ifdef _DEBUG
+				if(nBytes >= MIN_PCKT_SZ) {
+					std::cout << "Ignoring voice packet with OPCODE: " << (int)data[OFFSET_TO_CODEC_OP] << " OP0: " << (int)data[0x8] << std::endl;
+				} else {
+					std::cout << "Ignoring voice packet with size: " << nBytes << std::endl;
+				}
+			#endif
+
 			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 		}
 
@@ -58,7 +66,10 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 		}
 
-		std::cout << "Decompressed samples " << samples << std::endl;
+		#ifdef _DEBUG
+			std::cout << "Decompressed samples " << samples << std::endl;
+			std::cout << "OP0: " << (int)data[0x8] << " " << *(short*)&data[0x9] << std::endl;
+		#endif
 
 		//Bit crush the stream
 		/*for (int i = 0; i < samples; i++) {
@@ -73,7 +84,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		}*/
 
 		//Recompress the stream
-		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), true);
+		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples*2, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), true);
 
 		//Fixup original packet
 		memcpy(recompressBuffer, data, VOICE_DATA_SZ);
@@ -85,7 +96,11 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		*(CRC32_t*)(recompressBuffer + VOICE_DATA_SZ + bytesWritten) = crc;
 
 		uint32_t total_sz = bytesWritten + VOICE_DATA_SZ + sizeof(CRC32_t);
-		std::cout << "Retransmitted pckt sz: " << total_sz << std::endl;
+
+		#ifdef _DEBUG
+			std::cout << "Retransmitted pckt size: " << total_sz << std::endl;
+		#endif
+
 		//Broadcast voice data with our updated compressed data.
 		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, total_sz, recompressBuffer, xuid);
 	}
@@ -167,8 +182,6 @@ GMOD_MODULE_OPEN()
 		std::cout << "Could not locate CreateOpusPLCCodec!" << std::endl;
 		return 0;
 	}
-
-	std::cout << codecPtr << std::endl;
 
 	func_CreateOpusPLCCodec = (CreateOpusPLCCodecProto)codecPtr;
 
