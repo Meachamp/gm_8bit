@@ -1,0 +1,81 @@
+//------------------------------------------------
+//--- 010 Editor v10.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+
+//------------------------------------------------
+//--- 010 Editor v10.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+
+typedef enum <char> {
+    OP_CODEC_OPUSPLC = 6,
+    OP_SAMPLERATE = 11,
+    OP_UNK = 10,
+    OP_SILENCE = 0,
+    OP_CODEC_LEGACY = 1,
+    OP_CODEC_UNK = 2,
+    OP_CODEC_RAW = 3,
+    OP_CODEC_OPUS = 5,
+    OP_CODEC_SILK = 4
+
+} OPCODE;
+
+typedef struct {
+    OPCODE op;
+    if(op == OP_SAMPLERATE) {
+        short sampleRate;
+    }
+
+    if(op == OP_CODEC_OPUSPLC || op == OP_CODEC_OPUS || op == OP_CODEC_LEGACY || op == OP_CODEC_SILK) {
+        short data_len;
+        char data[data_len];
+    }
+
+    if(op == OP_CODEC_UNK) {
+        //unused
+    }
+
+    if(op == OP_CODEC_RAW) {
+        char raw_samples[FSize()-FTell()-4];
+    }
+
+    if(op == OP_UNK) {
+        char unk1;
+        char unk2;
+    }
+
+    if(op == OP_SILENCE) {
+        short sz_silence_samples;
+    }
+} CONTROL;
+
+uint64 steamid;
+//CONTROL c1;
+//OPCODE op;
+//short sampleRate;
+//OPCODE op_Pass2Decompressor;
+//short data_to_read;
+//char data_decomp[85];
+//CONTROL c2;
+
+while(FTell() < FileSize() - 4) {
+    CONTROL c;
+}
+uint32 crc;
