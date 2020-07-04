@@ -8,23 +8,20 @@
 #include <eifacev21.h>
 #include <ivoicecodec.h>
 #include <unordered_map>
-
-
 #include <dlfcn.h>
 
 
 static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
-static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8\x03\xDC\xD0\xFF\x81\xC3\x54\xE9\x40\x01\x83\xEC";
-//static const uint8_t CreateSilkCodec_sig[] = "\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x78\x00\x00\x00\xE8****\x89\xC6";
-static const size_t CreateSilkCodec_siglen = sizeof(CreateSilkCodec_sig) - 1;
+static const uint8_t CreateOpusPLCCodec_sig[] = "\x57\x56\x53\xE8\x03\xDC\xD0\xFF\x81\xC3\x54\xE9\x40\x01\x83\xEC";
+static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
 
 static int crushFactor = 700;
 static short decompressedBuffer[11500*2];
 static char recompressBuffer[11500*4];
 static bool didInit = false;
 
-typedef IVoiceCodec* (*CreateSilkCodecProto)();
-CreateSilkCodecProto func_CreateSilkCodec;
+typedef IVoiceCodec* (*CreateOpusPLCCodecProto)();
+CreateOpusPLCCodecProto func_CreateOpusPLCCodec;
 
 typedef void (*SV_BroadcastVoiceData)(IClient* cl, int nBytes, char* data, int64 xuid);
 Detouring::Hook detour_BroadcastVoiceData;
@@ -106,7 +103,7 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 	}
 
 	if (b) {
-		IVoiceCodec* codec = func_CreateSilkCodec();
+		IVoiceCodec* codec = func_CreateOpusPLCCodec();
 		codec->Init(5, 24000);
 		afflicted_players.insert(std::pair<int, IVoiceCodec*>(id, codec));
 	}
@@ -149,16 +146,16 @@ GMOD_MODULE_OPEN()
 
 	SourceSDK::FactoryLoader steamclient_loader("steamclient");
 	std::cout << steamclient_loader.GetModule() << std::endl;
-	void *codecPtr = symfinder.FindPattern(steamclient_loader.GetModule(), CreateSilkCodec_sig, CreateSilkCodec_siglen);
+	void *codecPtr = symfinder.FindPattern(steamclient_loader.GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
 	
 	if (codecPtr == nullptr) {
-		std::cout << "Could not locate CreateSilkCodec!" << std::endl;
+		std::cout << "Could not locate CreateOpusPLCCodec!" << std::endl;
 		return 0;
 	}
 
 	std::cout << codecPtr << std::endl;
 
-	func_CreateSilkCodec = (CreateSilkCodecProto)codecPtr;
+	func_CreateOpusPLCCodec = (CreateOpusPLCCodecProto)codecPtr;
 
 	detour_BroadcastVoiceData.Create(Detouring::Hook::Target(sv_bcast), reinterpret_cast<void*>(&hook_BroadcastVoiceData));
 	detour_BroadcastVoiceData.Enable();
@@ -172,7 +169,7 @@ GMOD_MODULE_CLOSE()
 {
 	detour_BroadcastVoiceData.Destroy();
 	didInit = false;
-	func_CreateSilkCodec = nullptr;
+	func_CreateOpusPLCCodec = nullptr;
 
 	for (auto& p : afflicted_players) {
 		if (p.second != nullptr) {
