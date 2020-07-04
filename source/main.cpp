@@ -10,15 +10,23 @@
 #include <unordered_map>
 #include <dlfcn.h>
 
+#include "checksum_crc.h"
+
 
 static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
 static const uint8_t CreateOpusPLCCodec_sig[] = "\x57\x56\x53\xE8\x03\xDC\xD0\xFF\x81\xC3\x54\xE9\x40\x01\x83\xEC";
 static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
 
 static int crushFactor = 700;
+static bool didInit = false;
+
+#define VOICE_DATA_SZ 0xE
+#define OFFSET_TO_VOICE_SZ 0xC
+#define OFFSET_TO_CODEC_OP 0xB
+#define CODEC_OP_OPUSPLC 6
 static short decompressedBuffer[11500*2];
 static char recompressBuffer[11500*4];
-static bool didInit = false;
+
 
 typedef IVoiceCodec* (*CreateOpusPLCCodecProto)();
 CreateOpusPLCCodecProto func_CreateOpusPLCCodec;
@@ -28,7 +36,7 @@ Detouring::Hook detour_BroadcastVoiceData;
 
 std::unordered_map<int, IVoiceCodec*> afflicted_players;
 
-void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
+void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	//Check if the player is in the set of enabled players.
 	//This is (and needs to be) and O(1) operation for how often this function is called. 
 	//If not in the set, just hit the trampoline to ensure default behavior. 
@@ -38,12 +46,12 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 
 		std::cout << "Received packet of length: " << nBytes << std::endl;
 
-		if(nBytes < (0xE + 0x4) || data[0xB] != 6) {
+		if(nBytes < (VOICE_DATA_SZ + sizeof(CRC32_t)) || data[OFFSET_TO_CODEC_OP] != CODEC_OP_OPUSPLC) {
 			std::cout << "Ignoring voice packet." << std::endl;
 			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 		}
 
-		int samples = codec->Decompress(data + 0xE, nBytes - 0xE - 0x4, (char*)decompressedBuffer, sizeof(decompressedBuffer));
+		int samples = codec->Decompress(data + VOICE_DATA_SZ, nBytes - VOICE_DATA_SZ - sizeof(CRC32_t), (char*)decompressedBuffer, sizeof(decompressedBuffer));
 		if (samples <= 0) {
 			//Just hit the trampoline at this point.
 			std::cout << "Decompression failed: " << samples << std::endl;
@@ -53,7 +61,7 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 		std::cout << "Decompressed samples " << samples << std::endl;
 
 		//Bit crush the stream
-		for (int i = 0; i < samples; i++) {
+		/*for (int i = 0; i < samples; i++) {
 			short* ptr = &decompressedBuffer[i];
 
 			//Signed shorts range from -32768 to 32767
@@ -62,17 +70,24 @@ void hook_BroadcastVoiceData(IClient* cl, int nBytes, char* data, int64 xuid) {
 			f /= crushFactor;
 			*ptr = (short)f;
 			*ptr *= crushFactor;
-		}
-
-		if(true) {
-			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
-		}
+		}*/
 
 		//Recompress the stream
-		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer, sizeof(recompressBuffer), true);
+		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), true);
 
-		//Broadcast voice data with our update compressed data.
-		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, bytesWritten, recompressBuffer, xuid);
+		//Fixup original packet
+		memcpy(recompressBuffer, data, VOICE_DATA_SZ);
+		uint16_t* dataLen = (uint16_t*)(recompressBuffer + OFFSET_TO_VOICE_SZ);
+		*dataLen = bytesWritten;
+
+		//Fixup checksum
+		CRC32_t crc = CRC32_ProcessSingleBuffer(recompressBuffer, VOICE_DATA_SZ + bytesWritten);
+		*(CRC32_t*)(recompressBuffer + VOICE_DATA_SZ + bytesWritten) = crc;
+
+		uint32_t total_sz = bytesWritten + VOICE_DATA_SZ + sizeof(CRC32_t);
+		std::cout << "Retransmitted pckt sz: " << total_sz << std::endl;
+		//Broadcast voice data with our updated compressed data.
+		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, total_sz, recompressBuffer, xuid);
 	}
 	else {
 		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
