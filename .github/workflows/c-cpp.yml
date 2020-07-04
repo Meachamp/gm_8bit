@@ -1,0 +1,26 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+        repository: danielga/garrysmod_common
+        ref: master
+    - name: Install Premake
+      run: |
+        wget https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha15-linux.tar.gz -O premake.tar.gz
+        sudo tar -xvf premake.tar.gz --directory=/usr/bin
+    - name: Generate Project
+      run: |
+        premake5 --gmcommon=garrysmod_common gmake
+        cd projects/linux/gmake
+    - name: Make
+      run: make
