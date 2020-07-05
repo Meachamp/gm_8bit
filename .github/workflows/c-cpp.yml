@@ -5,7 +5,7 @@ on:
     branches: [ master ]
     
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -31,3 +31,29 @@ jobs:
       with:
         name: gmsv_eightbit_linux.dll
         path: projects/linux/gmake/x86/ReleaseWithSymbols/gmsv_eightbit_linux.dll
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+        repository: danielga/garrysmod_common
+        ref: master
+        path: 'garrysmod_common'
+    - name: Install Premake
+      run: |
+         curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha15-windows.zip -o premake.zip
+         tar -xf premake.zip
+    - name: Generate Project
+      run: |
+        premake5 --gmcommon=garrysmod_common vs2019
+    - name: Build
+      run: |
+        cd projects/windows/vs2019
+        msbuild.exe /property:Configuration=ReleaseWithSymbols /property:Platform=Win32 eightbit.sln
+    - uses: actions/upload-artifact@v2
+      with:
+        name: gmsv_eightbit_windows.dll
+        path: projects/windows/vs2019/x86/ReleaseWithSymbols/gmsv_eightbit_win32.dll
+         
