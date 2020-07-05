@@ -10,6 +10,12 @@
 #include <unordered_map>
 #include "checksum_crc.h"
 
+#define VOICE_DATA_SZ 0xE
+#define OFFSET_TO_VOICE_SZ 0xC
+#define OFFSET_TO_CODEC_OP 0xB
+#define CODEC_OP_OPUSPLC 6
+#define MIN_PCKT_SZ VOICE_DATA_SZ + sizeof(CRC32_t)
+
 #ifdef SYSTEM_WINDOWS
 	#include <windows.h>
 	static const uint8_t GMOD_SV_BroadcastVoice_sym_sig[] = "\x55\x8B\xEC\x8B\x0D****\x83\xEC\x58\x81\xF9****";
@@ -27,12 +33,6 @@
 #endif
 
 static int crushFactor = 700;
-
-#define VOICE_DATA_SZ 0xE
-#define OFFSET_TO_VOICE_SZ 0xC
-#define OFFSET_TO_CODEC_OP 0xB
-#define CODEC_OP_OPUSPLC 6
-#define MIN_PCKT_SZ VOICE_DATA_SZ + sizeof(CRC32_t)
 
 static char decompressedBuffer[20 * 1024];
 static char recompressBuffer[20 * 1024];
