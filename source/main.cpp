@@ -86,7 +86,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		#endif
 
 		//Bit crush the stream
-		AudioEffects::BitCrush(recompressBuffer, samples, crushFactor);
+		AudioEffects::BitCrush((uint16*)recompressBuffer, samples, crushFactor);
 
 		//Recompress the stream
 		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), false);
