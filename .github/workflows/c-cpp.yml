@@ -51,7 +51,7 @@ jobs:
     - name: Build
       run: |
         cd projects/windows/vs2019
-        "%programfiles(x86)%\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\msbuild.exe" /property:Configuration=ReleaseWithSymbols /property:Platform=Win32 eightbit.sln
+        & "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\msbuild.exe" /p:Configuration=ReleaseWithSymbols /p:Platform=Win32 eightbit.sln
     - uses: actions/upload-artifact@v2
       with:
         name: gmsv_eightbit_windows.dll
