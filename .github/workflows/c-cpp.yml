@@ -47,7 +47,7 @@ jobs:
          tar -xf premake.zip
     - name: Generate Project
       run: |
-        premake5.exe --gmcommon=garrysmod_common vs2019
+        ./premake5.exe --gmcommon=garrysmod_common vs2019
     - name: Build
       run: |
         cd projects/windows/vs2019
