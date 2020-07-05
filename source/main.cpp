@@ -8,7 +8,8 @@
 #include <eifacev21.h>
 #include <ivoicecodec.h>
 #include <unordered_map>
-#include "checksum_crc.h"
+#include <checksum_crc.h>
+#include <audio_effects.h>
 
 #define VOICE_DATA_SZ 0xE
 #define OFFSET_TO_VOICE_SZ 0xC
@@ -85,17 +86,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		#endif
 
 		//Bit crush the stream
-		for (int i = 0; i < samples; i++) {
-			short* ptr = (short*)&recompressBuffer + i;
-
-			//Signed shorts range from -32768 to 32767
-			//Let's quantize that a bit
-			float f = (float)*ptr;
-			f /= crushFactor;
-			*ptr = (short)f;
-			*ptr *= crushFactor;
-			*ptr *= 1.5;
-		}
+		AudioEffects::BitCrush(recompressBuffer, samples, crushFactor);
 
 		//Recompress the stream
 		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), false);
