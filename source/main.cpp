@@ -58,6 +58,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 
 		#ifdef _DEBUG
 			std::cout << "Received packet of length: " << nBytes << std::endl;
+			std::cout << "OP0: " << (int)data[0x8] << " " << *(short*)&data[0x9] << std::endl;
 		#endif
 
 		if(nBytes < MIN_PCKT_SZ || data[OFFSET_TO_CODEC_OP] != CODEC_OP_OPUSPLC) {
@@ -81,7 +82,6 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 
 		#ifdef _DEBUG
 			std::cout << "Decompressed samples " << samples << std::endl;
-			std::cout << "OP0: " << (int)data[0x8] << " " << *(short*)&data[0x9] << std::endl;
 		#endif
 
 		//Bit crush the stream
@@ -97,7 +97,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		}*/
 
 		//Recompress the stream
-		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples*2, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), true);
+		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), false);
 
 		//Fixup original packet
 		memcpy(recompressBuffer, data, VOICE_DATA_SZ);
