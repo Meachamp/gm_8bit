@@ -27,13 +27,13 @@
 #endif
 
 static int crushFactor = 700;
-static bool didInit = false;
 
 #define VOICE_DATA_SZ 0xE
 #define OFFSET_TO_VOICE_SZ 0xC
 #define OFFSET_TO_CODEC_OP 0xB
 #define CODEC_OP_OPUSPLC 6
 #define MIN_PCKT_SZ VOICE_DATA_SZ + sizeof(CRC32_t)
+
 static char decompressedBuffer[20 * 1024];
 static char recompressBuffer[20 * 1024];
 
@@ -131,10 +131,6 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 	int id = LUA->GetNumber(1);
 	bool b = LUA->GetBool(2);
 
-	if (!didInit) {
-		LUA->ThrowError("Module did not successfully init!");
-	}
-
 	if (afflicted_players.find(id) != afflicted_players.end() && b) {
 		return 0;
 	}
@@ -156,15 +152,7 @@ LUA_FUNCTION_STATIC(zsutil_enable8bit) {
 
 GMOD_MODULE_OPEN()
 {
-	LUA->PushSpecial(GarrysMod::Lua::SPECIAL_GLOB);
-
-	LUA->PushString("zsutil_crush");
-	LUA->PushCFunction(zsutil_crush);
-	LUA->SetTable(-3);
-
-	LUA->PushString("Enable8Bit");
-	LUA->PushCFunction(zsutil_enable8bit);
-	LUA->SetTable(-3);
+	afflicted_players = std::unordered_map<int, IVoiceCodec*>();
 
 	engine_loader = new SourceSDK::ModuleLoader("engine");
 	SymbolFinder symfinder;
@@ -178,11 +166,21 @@ GMOD_MODULE_OPEN()
 		LUA->ThrowError("Could not locate SV_BrodcastVoice symbol!");
 	}
 
-	steamclient_loader = new SourceSDK::ModuleLoader("steamclient");
-	if(steamclient_loader->GetModule() == nullptr) {
-		LUA->ThrowError("Could not load steamclient!");
-	}
-	void *codecPtr = symfinder.FindPattern(steamclient_loader->GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
+	#ifdef SYSTEM_LINUX
+		steamclient_loader = new SourceSDK::ModuleLoader("steamclient");
+		if(steamclient_loader->GetModule() == nullptr) {
+			LUA->ThrowError("Could not load steamclient!");
+		}
+		void* codecPtr = symfinder.FindPattern(steamclient_loader->GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
+	#elif SYSTEM_WINDOWS
+		//Windows loads steamclient from a directory outside of the normal search paths. 
+		//This is our workaround.
+		void* steamlib = LoadLibraryA("steamclient.dll");
+		if (steamlib == nullptr) {
+			LUA->ThrowError("[WIN] Could not load steamclient!");
+		}
+		void* codecPtr = symfinder.FindPattern(steamlib, CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
+	#endif
 	
 	if (codecPtr == nullptr) {
 		LUA->ThrowError("Could not locate CreateOpusPLCCodec!");
@@ -193,15 +191,22 @@ GMOD_MODULE_OPEN()
 	detour_BroadcastVoiceData.Create(Detouring::Hook::Target(sv_bcast), reinterpret_cast<void*>(&hook_BroadcastVoiceData));
 	detour_BroadcastVoiceData.Enable();
 
-	afflicted_players = std::unordered_map<int, IVoiceCodec*>();
-	didInit = true;
+	LUA->PushSpecial(GarrysMod::Lua::SPECIAL_GLOB);
+
+	LUA->PushString("zsutil_crush");
+	LUA->PushCFunction(zsutil_crush);
+	LUA->SetTable(-3);
+
+	LUA->PushString("Enable8Bit");
+	LUA->PushCFunction(zsutil_enable8bit);
+	LUA->SetTable(-3);
+
 	return 0;
 }
 
 GMOD_MODULE_CLOSE()
 {
 	detour_BroadcastVoiceData.Destroy();
-	didInit = false;
 	func_CreateOpusPLCCodec = nullptr;
 
 	for (auto& p : afflicted_players) {
