@@ -32,7 +32,7 @@
 	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
 #endif
 
-static int crushFactor = 700;
+static int crushFactor = 350;
 
 static char decompressedBuffer[20 * 1024];
 static char recompressBuffer[20 * 1024];
@@ -85,8 +85,8 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		#endif
 
 		//Bit crush the stream
-		/*for (int i = 0; i < samples; i++) {
-			short* ptr = &decompressedBuffer[i];
+		for (int i = 0; i < samples; i++) {
+			short* ptr = (short*)&recompressBuffer + i;
 
 			//Signed shorts range from -32768 to 32767
 			//Let's quantize that a bit
@@ -94,7 +94,8 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 			f /= crushFactor;
 			*ptr = (short)f;
 			*ptr *= crushFactor;
-		}*/
+			*ptr *= 1.5;
+		}
 
 		//Recompress the stream
 		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), false);
