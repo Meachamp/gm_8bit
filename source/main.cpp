@@ -40,6 +40,9 @@ static char recompressBuffer[20 * 1024];
 typedef IVoiceCodec* (*CreateOpusPLCCodecProto)();
 CreateOpusPLCCodecProto func_CreateOpusPLCCodec;
 
+SourceSDK::ModuleLoader* steamclient_loader = nullptr;
+SourceSDK::ModuleLoader* engine_loader = nullptr;
+
 typedef void (*SV_BroadcastVoiceData)(IClient* cl, int nBytes, char* data, int64 xuid);
 Detouring::Hook detour_BroadcastVoiceData;
 
@@ -163,23 +166,23 @@ GMOD_MODULE_OPEN()
 	LUA->PushCFunction(zsutil_enable8bit);
 	LUA->SetTable(-3);
 
-	SourceSDK::FactoryLoader engine_loader("engine");
+	engine_loader = new SourceSDK::ModuleLoader("engine");
 	SymbolFinder symfinder;
 
 	#ifdef SYSTEM_WINDOWS
-		void* sv_bcast = symfinder.FindPattern(engine_loader.GetModule(), GMOD_SV_BroadcastVoice_sym_sig, GMOD_SV_BroadcastVoice_siglen, engine_loader.GetModule());
+		void* sv_bcast = symfinder.FindPattern(engine_loader->GetModule(), GMOD_SV_BroadcastVoice_sym_sig, GMOD_SV_BroadcastVoice_siglen);
 	#elif SYSTEM_LINUX
-		void* sv_bcast = symfinder.FindSymbol(engine_loader.GetModule(), GMOD_SV_BroadcastVoice_sym_sig);
+		void* sv_bcast = symfinder.FindSymbol(engine_loader->GetModule(), GMOD_SV_BroadcastVoice_sym_sig);
 	#endif
 	if (sv_bcast == nullptr) {
 		LUA->ThrowError("Could not locate SV_BrodcastVoice symbol!");
 	}
 
-	SourceSDK::FactoryLoader steamclient_loader("steamclient");
-	if(steamclient_loader.GetModule() == nullptr) {
+	steamclient_loader = new SourceSDK::ModuleLoader("steamclient");
+	if(steamclient_loader->GetModule() == nullptr) {
 		LUA->ThrowError("Could not load steamclient!");
 	}
-	void *codecPtr = symfinder.FindPattern(steamclient_loader.GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
+	void *codecPtr = symfinder.FindPattern(steamclient_loader->GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
 	
 	if (codecPtr == nullptr) {
 		LUA->ThrowError("Could not locate CreateOpusPLCCodec!");
@@ -208,6 +211,11 @@ GMOD_MODULE_CLOSE()
 	}
 
 	afflicted_players.clear();
+
+	delete steamclient_loader;
+	delete engine_loader;
+	steamclient_loader = nullptr;
+	engine_loader = nullptr;
 
 	return 0;
 }
