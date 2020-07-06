@@ -11,19 +11,6 @@
 //   History: 
 //------------------------------------------------
 
-//------------------------------------------------
-//--- 010 Editor v10.0.1 Binary Template
-//
-//      File: 
-//   Authors: 
-//   Version: 
-//   Purpose: 
-//  Category: 
-// File Mask: 
-//  ID Bytes: 
-//   History: 
-//------------------------------------------------
-
 typedef enum <char> {
     OP_CODEC_OPUSPLC = 6,
     OP_SAMPLERATE = 11,
@@ -38,6 +25,12 @@ typedef enum <char> {
 } OPCODE;
 
 typedef struct {
+	short frame_len;
+	short sequence_id;
+	char data[frame_len];
+} OPUSFRAME;
+
+typedef struct {
     OPCODE op;
     if(op == OP_SAMPLERATE) {
         short sampleRate;
@@ -45,7 +38,16 @@ typedef struct {
 
     if(op == OP_CODEC_OPUSPLC || op == OP_CODEC_OPUS || op == OP_CODEC_LEGACY || op == OP_CODEC_SILK) {
         short data_len;
-        char data[data_len];
+		
+		if(op == OP_CODEC_OPUSPLC) {
+			local int start = FTell();
+			
+			while(FTell() < start + data_len) {
+				OPUSFRAME frame;
+			}
+		} else {
+			char data[data_len];
+		}
     }
 
     if(op == OP_CODEC_UNK) {
