@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <checksum_crc.h>
 #include <audio_effects.h>
+#include <net.h>
 
 #define VOICE_DATA_SZ 0xE
 #define OFFSET_TO_VOICE_SZ 0xC
@@ -34,6 +35,7 @@
 #endif
 
 static int crushFactor = 350;
+static bool broadcastPackets = true;
 
 static char decompressedBuffer[20 * 1024];
 static char recompressBuffer[20 * 1024];
@@ -43,6 +45,7 @@ CreateOpusPLCCodecProto func_CreateOpusPLCCodec;
 
 SourceSDK::ModuleLoader* steamclient_loader = nullptr;
 SourceSDK::ModuleLoader* engine_loader = nullptr;
+Net* net_handl = nullptr;
 
 typedef void (*SV_BroadcastVoiceData)(IClient* cl, int nBytes, char* data, int64 xuid);
 Detouring::Hook detour_BroadcastVoiceData;
@@ -54,6 +57,11 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	//This is (and needs to be) and O(1) operation for how often this function is called. 
 	//If not in the set, just hit the trampoline to ensure default behavior. 
 	int uid = cl->GetUserID();
+
+	if (broadcastPackets && nBytes >= MIN_PCKT_SZ && data[OFFSET_TO_CODEC_OP] == CODEC_OP_OPUSPLC) {
+		net_handl->SendPacket("127.0.0.1", data + VOICE_DATA_SZ, nBytes - VOICE_DATA_SZ - sizeof(CRC32_t));
+	}
+
 	if (afflicted_players.find(uid) != afflicted_players.end()) {
 		IVoiceCodec* codec = afflicted_players.at(uid);
 
@@ -193,6 +201,8 @@ GMOD_MODULE_OPEN()
 	LUA->PushCFunction(zsutil_enable8bit);
 	LUA->SetTable(-3);
 
+	net_handl = new Net();
+
 	return 0;
 }
 
@@ -211,8 +221,10 @@ GMOD_MODULE_CLOSE()
 
 	delete steamclient_loader;
 	delete engine_loader;
+	delete net_handl;
 	steamclient_loader = nullptr;
 	engine_loader = nullptr;
+	net_handl = nullptr;
 
 	return 0;
 }
