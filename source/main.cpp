@@ -2,7 +2,6 @@
 #include <GarrysMod/FactoryLoader.hpp>
 #include <scanning/symbolfinder.hpp>
 #include <detouring/hook.hpp>
-#include <iclient_patch.h>
 #include <iostream>
 #include <cbase.h>
 #include <eifacev21.h>
