@@ -6,6 +6,7 @@
 #include <cbase.h>
 #include <eifacev21.h>
 #include <ivoicecodec.h>
+#include <iclient.h>
 #include <unordered_map>
 #include <checksum_crc.h>
 #include <audio_effects.h>
