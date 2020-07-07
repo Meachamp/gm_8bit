@@ -59,7 +59,17 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	int uid = cl->GetUserID();
 
 	if (broadcastPackets && nBytes >= MIN_PCKT_SZ && data[OFFSET_TO_CODEC_OP] == CODEC_OP_OPUSPLC) {
-		net_handl->SendPacket("127.0.0.1", data + VOICE_DATA_SZ, nBytes - VOICE_DATA_SZ - sizeof(CRC32_t));
+		//Get the user's steamid64, put it at the beginning of the buffer. 
+		//Notice that we don't use the conveniently provided one in the voice packet. The client can manipulate that one.
+		uint64_t id64 = *(uint64_t*)((char*)cl + 181);
+		*(uint64_t*)decompressedBuffer = id64;
+
+		//Transfer the packet data to our scratch buffer
+		size_t voice_size = nBytes - VOICE_DATA_SZ - sizeof(CRC32_t);
+		std::memcpy(decompressedBuffer + sizeof(uint64_t), data + VOICE_DATA_SZ, voice_size);
+
+		//Finally we'll broadcast our new packet
+		net_handl->SendPacket("127.0.0.1", decompressedBuffer, voice_size + sizeof(uint64_t));
 	}
 
 	if (afflicted_players.find(uid) != afflicted_players.end()) {
