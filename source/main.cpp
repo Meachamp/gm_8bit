@@ -35,7 +35,7 @@
 #endif
 
 static int crushFactor = 350;
-static bool broadcastPackets = true;
+static bool broadcastPackets = false;
 
 static char decompressedBuffer[20 * 1024];
 static char recompressBuffer[20 * 1024];
@@ -132,12 +132,17 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	}
 }
 
-LUA_FUNCTION_STATIC(zsutil_crush) {
+LUA_FUNCTION_STATIC(eightbit_crush) {
 	crushFactor = (int)LUA->GetNumber(1);
 	return 0;
 }
 
-LUA_FUNCTION_STATIC(zsutil_enable8bit) {
+LUA_FUNCTION_STATIC(eightbit_broadcast) {
+	broadcastPackets = LUA->GetBool(1);
+	return 0;
+}
+
+LUA_FUNCTION_STATIC(eightbit_enable8bit) {
 	int id = LUA->GetNumber(1);
 	bool b = LUA->GetBool(2);
 
@@ -203,13 +208,21 @@ GMOD_MODULE_OPEN()
 
 	LUA->PushSpecial(GarrysMod::Lua::SPECIAL_GLOB);
 
-	LUA->PushString("zsutil_crush");
-	LUA->PushCFunction(zsutil_crush);
-	LUA->SetTable(-3);
+	LUA->PushString("eightbit");
+	LUA->CreateTable();
+		LUA->PushString("SetCrushFactor");
+		LUA->PushCFunction(eightbit_crush);
+		LUA->SetTable(-3);
 
-	LUA->PushString("Enable8Bit");
-	LUA->PushCFunction(zsutil_enable8bit);
+		LUA->PushString("Enable8Bit");
+		LUA->PushCFunction(eightbit_enable8bit);
+		LUA->SetTable(-3);
+
+		LUA->PushString("EnableBroadcast");
+		LUA->PushCFunction(eightbit_broadcast);
+		LUA->SetTable(-3);
 	LUA->SetTable(-3);
+	LUA->Pop();
 
 	net_handl = new Net();
 
