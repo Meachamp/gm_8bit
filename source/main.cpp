@@ -148,6 +148,11 @@ LUA_FUNCTION_STATIC(eightbit_broadcast) {
 	return 0;
 }
 
+LUA_FUNCTION_STATIC(eightbit_getcrush) {
+	LUA->PushNumber(crushFactor);
+	return 1;
+}
+
 LUA_FUNCTION_STATIC(eightbit_enable8bit) {
 	int id = LUA->GetNumber(1);
 	bool b = LUA->GetBool(2);
@@ -220,6 +225,10 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(eightbit_crush);
 		LUA->SetTable(-3);
 
+		LUA->PushString("GetCrushFactor");
+		LUA->PushCFunction(eightbit_getcrush);
+		LUA->SetTable(-3);
+
 		LUA->PushString("Enable8Bit");
 		LUA->PushCFunction(eightbit_enable8bit);
 		LUA->SetTable(-3);
@@ -235,10 +244,6 @@ GMOD_MODULE_OPEN()
 	LUA->Pop();
 
 	net_handl = new Net();
-	broadcastPackets = false;
-	afflicted_players = std::unordered_map<int, IVoiceCodec*>();
-	crushFactor = 350;
-	gainFactor = 1.2;
 
 	return 0;
 }
@@ -246,7 +251,6 @@ GMOD_MODULE_OPEN()
 GMOD_MODULE_CLOSE()
 {
 	detour_BroadcastVoiceData.Destroy();
-	func_CreateOpusPLCCodec = nullptr;
 
 	for (auto& p : afflicted_players) {
 		if (p.second != nullptr) {
@@ -259,9 +263,6 @@ GMOD_MODULE_CLOSE()
 	delete steamclient_loader;
 	delete engine_loader;
 	delete net_handl;
-	steamclient_loader = nullptr;
-	engine_loader = nullptr;
-	net_handl = nullptr;
 
 	return 0;
 }
