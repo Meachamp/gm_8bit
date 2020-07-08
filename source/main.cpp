@@ -66,7 +66,10 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		*(uint64_t*)decompressedBuffer = id64;
 
 		//Transfer the packet data to our scratch buffer
-		size_t voice_size = nBytes - VOICE_DATA_SZ - sizeof(CRC32_t);
+		//This looks jank, but it's to prevent a theoretically malformed packet triggering a massive memcpy
+		size_t max_size = nBytes - VOICE_DATA_SZ - sizeof(CRC32_t);
+		size_t reported_size = *(uint16_t*)(&data + 0xC);
+		size_t voice_size = min(max_size, reported_size);
 		std::memcpy(decompressedBuffer + sizeof(uint64_t), data + VOICE_DATA_SZ, voice_size);
 
 		//Finally we'll broadcast our new packet
