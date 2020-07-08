@@ -11,6 +11,7 @@
 #include <checksum_crc.h>
 #include <audio_effects.h>
 #include <net.h>
+#include <minmax.h>
 
 #define VOICE_DATA_SZ 0xE
 #define OFFSET_TO_VOICE_SZ 0xC
@@ -69,7 +70,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		//This looks jank, but it's to prevent a theoretically malformed packet triggering a massive memcpy
 		size_t max_size = nBytes - VOICE_DATA_SZ - sizeof(CRC32_t);
 		size_t reported_size = *(uint16_t*)(&data + 0xC);
-		size_t voice_size = min(max_size, reported_size);
+		size_t voice_size = vmin(max_size, reported_size);
 		std::memcpy(decompressedBuffer + sizeof(uint64_t), data + VOICE_DATA_SZ, voice_size);
 
 		//Finally we'll broadcast our new packet
