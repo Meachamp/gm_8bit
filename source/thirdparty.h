@@ -16,6 +16,7 @@ void linkMutedFunc() {
     void* ptr = dlopen("gmsv_zsvoicechat_linux.dll", RTLD_NOW | RTLD_NOLOAD);
     if(ptr) {
         external_mute_func = (MuteFuncProto)dlsym(ptr, "shouldBeMuted");
+        dlclose(ptr);
     }
 }
 
