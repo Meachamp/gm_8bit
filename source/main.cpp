@@ -35,6 +35,7 @@
 #endif
 
 static int crushFactor = 350;
+static float gainFactor = 1.2;
 static bool broadcastPackets = false;
 
 static char decompressedBuffer[20 * 1024];
@@ -104,7 +105,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		#endif
 
 		//Bit crush the stream
-		AudioEffects::BitCrush((uint16*)recompressBuffer, samples, crushFactor);
+		AudioEffects::BitCrush((uint16_t*)&decompressedBuffer, samples, crushFactor, gainFactor);
 
 		//Recompress the stream
 		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), false);
@@ -134,6 +135,11 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 
 LUA_FUNCTION_STATIC(eightbit_crush) {
 	crushFactor = (int)LUA->GetNumber(1);
+	return 0;
+}
+
+LUA_FUNCTION_STATIC(eightbit_gain) {
+	gainFactor = (float)LUA->GetNumber(1);
 	return 0;
 }
 
@@ -221,12 +227,18 @@ GMOD_MODULE_OPEN()
 		LUA->PushString("EnableBroadcast");
 		LUA->PushCFunction(eightbit_broadcast);
 		LUA->SetTable(-3);
+
+		LUA->PushString("SetGainFactor");
+		LUA->PushCFunction(eightbit_gain);
+		LUA->SetTable(-3);
 	LUA->SetTable(-3);
 	LUA->Pop();
 
 	net_handl = new Net();
 	broadcastPackets = false;
 	afflicted_players = std::unordered_map<int, IVoiceCodec*>();
+	crushFactor = 350;
+	gainFactor = 1.2;
 
 	return 0;
 }

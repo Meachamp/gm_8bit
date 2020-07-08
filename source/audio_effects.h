@@ -4,20 +4,20 @@
 #include <cstring>
 
 namespace AudioEffects {
-	void BitCrush(uint16* sampleBuffer, int samples, float quant) {
+	void BitCrush(uint16_t* sampleBuffer, int samples, float quant, float gainFactor) {
 		for (int i = 0; i < samples; i++) {
 			//Signed shorts range from -32768 to 32767
 			//Let's quantize that a bit
 			float f = (float)sampleBuffer[i];
 			f /= quant;
-			sampleBuffer[i] = (uint16)f;
+			sampleBuffer[i] = (uint16_t)f;
 			sampleBuffer[i] *= quant;
-			sampleBuffer[i] *= 1.5;
+			sampleBuffer[i] *= gainFactor;
 		}
 	}
 
-	static uint16 tempBuf[10 * 1024];
-	void Desample(uint16* inBuffer, int& samples) {
+	static uint16_t tempBuf[10 * 1024];
+	void Desample(uint16_t* inBuffer, int& samples) {
 		assert(samples / 2 + 1 <= sizeof(tempBuf));
 		int outIdx = 0;
 		for (int i = 0; i < samples; i++) {
