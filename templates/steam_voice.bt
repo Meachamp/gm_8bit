@@ -26,8 +26,11 @@ typedef enum <char> {
 
 typedef struct {
 	short frame_len;
-	short sequence_id;
-	char data[frame_len];
+	
+	if(frame_len != -1) {
+        short sequence_id;
+		char data[frame_len];
+    }
 } OPUSFRAME;
 
 typedef struct {
@@ -44,6 +47,10 @@ typedef struct {
 			
 			while(FTell() < start + data_len) {
 				OPUSFRAME frame;
+				if(frame.frame_len == -1) {
+                    break;
+                }
+					
 			}
 		} else {
 			char data[data_len];
@@ -69,13 +76,6 @@ typedef struct {
 } CONTROL;
 
 uint64 steamid;
-//CONTROL c1;
-//OPCODE op;
-//short sampleRate;
-//OPCODE op_Pass2Decompressor;
-//short data_to_read;
-//char data_decomp[85];
-//CONTROL c2;
 
 while(FTell() < FileSize() - 4) {
     CONTROL c;
