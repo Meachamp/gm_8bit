@@ -225,6 +225,8 @@ GMOD_MODULE_OPEN()
 	LUA->Pop();
 
 	net_handl = new Net();
+	broadcastPackets = false;
+	afflicted_players = std::unordered_map<int, IVoiceCodec*>();
 
 	return 0;
 }
