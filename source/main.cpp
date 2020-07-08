@@ -12,6 +12,7 @@
 #include <audio_effects.h>
 #include <net.h>
 #include <minmax.h>
+#include <thirdparty.h>
 
 #define VOICE_DATA_SZ 0xE
 #define OFFSET_TO_VOICE_SZ 0xC
@@ -59,6 +60,12 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	//This is (and needs to be) and O(1) operation for how often this function is called. 
 	//If not in the set, just hit the trampoline to ensure default behavior. 
 	int uid = cl->GetUserID();
+
+#ifdef THIRDPARTY_LINK
+	if(checkIfMuted(cl->GetPlayerSlot()+1)) {
+		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
+	}
+#endif
 
 	if (broadcastPackets && nBytes >= MIN_PCKT_SZ && data[OFFSET_TO_CODEC_OP] == CODEC_OP_OPUSPLC) {
 		//Get the user's steamid64, put it at the beginning of the buffer. 
@@ -248,6 +255,10 @@ GMOD_MODULE_OPEN()
 	LUA->Pop();
 
 	net_handl = new Net();
+
+#ifdef THIRDPARTY_LINK
+	linkMutedFunc();
+#endif
 
 	return 0;
 }
