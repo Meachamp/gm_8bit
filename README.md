@@ -16,11 +16,16 @@ gm_8bit currently has reference implementations for relaying voice data and appl
 Both windows and linux builds are available with every commit. See the actions page. 
 
 # API
-`eightbit.EnableBroadcast(bool)` Sets whether the module should relay voice packets to `localhost:4000`
-`eightbit.EnableEffect(userid, number)` Sets whether to enable audio effect for a given userid. Takes an eightbit.EFF enum
-`eightbit.SetGainFactor(number)` Sets the gain multiplier to apply to affected userids
-`eightbit.SetCrushFactor(number)` Sets the bitcrush factor for the reference bitcrush implementation
+`eightbit.EnableBroadcast(bool)` Sets whether the module should relay voice packets to `localhost:4000`.
 
-`eightbit.EFF_NONE` No audio effect
-`eightbit.EFF_DESAMPLE` Desamples audio, effectively doubling frequency
+`eightbit.EnableEffect(userid, number)` Sets whether to enable audio effect for a given userid. Takes an eightbit.EFF enum.
+
+`eightbit.SetGainFactor(number)` Sets the gain multiplier to apply to affected userids.
+
+`eightbit.SetCrushFactor(number)` Sets the bitcrush factor for the reference bitcrush implementation.
+
+`eightbit.EFF_NONE` No audio effect.
+
+`eightbit.EFF_DESAMPLE` Desamples audio, effectively doubling frequency/
+
 `eightbit.EFF_BITCRUSH` Deep fries the audio. Governed by a gain factor and a quantization factor. 
