@@ -23,39 +23,39 @@ namespace SteamVoice {
 
 		while (curRead < maxRead) {
 			//Check to make sure we have one byte of buffer space remaining at least
-			if (curRead + 1 > maxRead)
+			if (curRead + sizeof(char) > maxRead)
 				return -1;
 
 			//Get the current packet opcode
 			char opcode = *curRead;
-			curRead++;
+			curRead += sizeof(char);
 
 			switch (opcode) {
 			case OP_SILENCE: {
 				//Contains a number of silence samples to add to the decompressed data. Skip for now.
-				if (curRead + 2 > maxRead)
+				if (curRead + sizeof(uint16_t) > maxRead)
 					return -1;
 
-				curRead += 2;
+				curRead += sizeof(uint16_t);
 				break;
 			}
 			case OP_SAMPLERATE: {
 				//Contains the samplerate for the stream. Always 24000 as far as I can tell.
-				if (curRead + 2 > maxRead)
+				if (curRead + sizeof(uint16_t) > maxRead)
 					return -1;
 
 				uint16_t sampleRate = *(uint16_t*)curRead;
 				sampleRate;
-				curRead += 2;
+				curRead += sizeof(uint16_t);
 				break;
 			}
 			case OP_CODEC_OPUSPLC: {
 				//Contains length plus a number of steam opus frames
-				if (curRead + 2 > maxRead)
+				if (curRead + sizeof(uint16_t) > maxRead)
 					return -1;
 
 				uint16_t frameDataLen = *(uint16_t*)curRead;
-				curRead += 2;
+				curRead += sizeof(uint16_t);
 				if (curRead + frameDataLen > maxRead)
 					return -1;
 
@@ -87,24 +87,24 @@ namespace SteamVoice {
 		curWrite += sizeof(uint64_t);
 
 		//Write sample rate operation
-		if (curWrite + 3 > maxWrite)
+		if (curWrite + sizeof(char) + sizeof(uint16_t) > maxWrite)
 			return -1;
 
 		*curWrite = OP_SAMPLERATE;
-		curWrite++;
+		curWrite += sizeof(char);
 		*(uint16_t*)curWrite = sampleRate;
-		curWrite += 2;
+		curWrite += sizeof(uint16_t);
 
 		//Write opus codec operation
-		if (curWrite + 3 > maxWrite)
+		if (curWrite + sizeof(char) + sizeof(uint16_t) > maxWrite)
 			return -1;
 
 		*curWrite = OP_CODEC_OPUSPLC;
-		curWrite++;
+		curWrite += sizeof(char);
 
 		//Setup address to write to with compression length 
 		uint16_t* outLenAddr = (uint16_t*)curWrite;
-		curWrite += 2;
+		curWrite += sizeof(uint16_t);
 
 		int compressedBytes = codec->Compress(inputData, inputLen / 2, curWrite, maxWrite - curWrite, false);
 
