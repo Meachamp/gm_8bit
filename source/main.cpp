@@ -8,18 +8,13 @@
 #include <ivoicecodec.h>
 #include <iclient.h>
 #include <unordered_map>
-#include <checksum_crc.h>
 #include <audio_effects.h>
 #include <net.h>
 #include <minmax.h>
 #include <thirdparty.h>
 #include <steam_voice.h>
 
-#define VOICE_DATA_SZ 0xE
-#define OFFSET_TO_VOICE_SZ 0xC
-#define OFFSET_TO_CODEC_OP 0xB
-#define CODEC_OP_OPUSPLC 6
-#define MIN_PCKT_SZ VOICE_DATA_SZ + sizeof(CRC32_t)
+#define STEAM_PCKT_SZ sizeof(uint64_t) + sizeof(CRC32_t)
 
 #ifdef SYSTEM_WINDOWS
 	#include <windows.h>
@@ -86,25 +81,13 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	if (afflicted_players.find(uid) != afflicted_players.end()) {
 		IVoiceCodec* codec = afflicted_players.at(uid);
 
-		#ifdef _DEBUG
-			std::cout << "Received packet of length: " << nBytes << std::endl;
-			std::cout << "OP0: " << (int)data[0x8] << " " << *(short*)&data[0x9] << std::endl;
-		#endif
-
-		if(nBytes < MIN_PCKT_SZ || data[OFFSET_TO_CODEC_OP] != CODEC_OP_OPUSPLC) {
-			#ifdef _DEBUG
-				if(nBytes >= MIN_PCKT_SZ) {
-					std::cout << "Ignoring voice packet with OPCODE: " << (int)data[OFFSET_TO_CODEC_OP] << " OP0: " << (int)data[0x8] << std::endl;
-				} else {
-					std::cout << "Ignoring voice packet with size: " << nBytes << std::endl;
-				}
-			#endif
-
+		if(nBytes < STEAM_PCKT_SZ) {
 			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 		}
 
-		int samples = codec->Decompress(data + VOICE_DATA_SZ, nBytes - VOICE_DATA_SZ - sizeof(CRC32_t), (char*)decompressedBuffer, sizeof(decompressedBuffer));
-		if (samples <= 0) {
+		int bytesDecompressed = SteamVoice::DecompressIntoBuffer(codec, data, nBytes, decompressedBuffer, sizeof(decompressedBuffer));
+		int samples = bytesDecompressed / 2;
+		if (bytesDecompressed <= 0) {
 			//Just hit the trampoline at this point.
 			std::cout << "Decompression failed: " << samples << std::endl;
 			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
@@ -118,25 +101,15 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		AudioEffects::BitCrush((uint16_t*)&decompressedBuffer, samples, crushFactor, gainFactor);
 
 		//Recompress the stream
-		int bytesWritten = codec->Compress((char*)decompressedBuffer, samples, recompressBuffer + VOICE_DATA_SZ, sizeof(recompressBuffer) - VOICE_DATA_SZ - sizeof(CRC32_t), false);
-
-		//Fixup original packet
-		memcpy(recompressBuffer, data, VOICE_DATA_SZ);
-		uint16_t* dataLen = (uint16_t*)(recompressBuffer + OFFSET_TO_VOICE_SZ);
-		*dataLen = bytesWritten;
-
-		//Fixup checksum
-		CRC32_t crc = CRC32_ProcessSingleBuffer(recompressBuffer, VOICE_DATA_SZ + bytesWritten);
-		*(CRC32_t*)(recompressBuffer + VOICE_DATA_SZ + bytesWritten) = crc;
-
-		uint32_t total_sz = bytesWritten + VOICE_DATA_SZ + sizeof(CRC32_t);
+		uint64_t steamid = *(uint64_t*)data;
+		int bytesWritten = SteamVoice::CompressIntoBuffer(steamid, codec, decompressedBuffer, bytesDecompressed, recompressBuffer, sizeof(recompressBuffer), 24000);
 
 		#ifdef _DEBUG
-			std::cout << "Retransmitted pckt size: " << total_sz << std::endl;
+			std::cout << "Retransmitted pckt size: " << bytesWritten << std::endl;
 		#endif
 
 		//Broadcast voice data with our updated compressed data.
-		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, total_sz, recompressBuffer, xuid);
+		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, bytesWritten, recompressBuffer, xuid);
 	}
 	else {
 		return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <ivoicecodec.h>
+#include <checksum_crc.h>
 
 namespace SteamVoice {
 	enum {
@@ -9,11 +10,17 @@ namespace SteamVoice {
 		OP_SAMPLERATE = 11
 	};
 
+	//Outputs bytes written or -1 on corruption
 	int DecompressIntoBuffer(IVoiceCodec* codec, char* compressedData, int compressedLen, char* decompressedOut, int maxDecompressed) {
 		char* curRead = compressedData;
 		char* maxRead = compressedData + compressedLen;
 		char* curWrite = decompressedOut;
 		char* maxWrite = decompressedOut + maxDecompressed;
+
+		//Strip steamid at beginning of packet and crc at end of packet
+		curRead += sizeof(uint64_t);
+		maxRead -= sizeof(uint32_t);
+
 		while (curRead < maxRead) {
 			//Check to make sure we have one byte of buffer space remaining at least
 			if (curRead + 1 >= maxRead)
@@ -51,11 +58,11 @@ namespace SteamVoice {
 				if (curRead + frameDataLen >= maxRead)
 					return -1;
 
-				int decompressedBytes = codec->Decompress(curRead, frameDataLen, curWrite, maxWrite-curWrite);
-				if (decompressedBytes <= 0)
+				int decompressedSamples = codec->Decompress(curRead, frameDataLen, curWrite, maxWrite-curWrite);
+				if (decompressedSamples <= 0)
 					return -1;
 
-				curWrite += decompressedBytes;
+				curWrite += decompressedSamples*2;
 				curRead += frameDataLen;
 				break;
 			}
@@ -67,9 +74,16 @@ namespace SteamVoice {
 		return curWrite - decompressedOut;
 	}
 
-	int CompressIntoBuffer(IVoiceCodec* codec, char* inputData, int inputLen, char* compressedOut, int maxCompressed, int sampleRate) {
+	//Outputs number of bytes written or -1 on failure
+	int CompressIntoBuffer(uint64_t steamid, IVoiceCodec* codec, char* inputData, int inputLen, char* compressedOut, int maxCompressed, int sampleRate) {
 		char* curWrite = compressedOut;
 		char* maxWrite = compressedOut + maxCompressed;
+
+		if (curWrite + sizeof(uint64_t) >= maxWrite)
+			return -1;
+
+		*(uint64_t*)curWrite = steamid;
+		curWrite += sizeof(uint64_t);
 
 		//Write sample rate operation
 		if (curWrite + 3 >= maxWrite)
@@ -99,6 +113,14 @@ namespace SteamVoice {
 		curWrite += compressedBytes;
 		*outLenAddr = compressedBytes;
 
+		if (curWrite + sizeof(CRC32_t) >= maxWrite)
+			return -1;
+
+		CRC32_t crc = CRC32_ProcessSingleBuffer(compressedOut, curWrite - compressedOut);
+		*(CRC32_t*)(curWrite) = crc;
+
 		return curWrite - compressedOut;
 	}
+
+
 }
