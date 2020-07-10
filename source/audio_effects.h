@@ -4,6 +4,12 @@
 #include <cstring>
 
 namespace AudioEffects {
+	enum {
+		EFF_NONE,
+		EFF_BITCRUSH,
+		EFF_DESAMPLE
+	};
+
 	void BitCrush(uint16_t* sampleBuffer, int samples, float quant, float gainFactor) {
 		for (int i = 0; i < samples; i++) {
 			//Signed shorts range from -32768 to 32767
