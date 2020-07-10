@@ -13,6 +13,7 @@
 #include <net.h>
 #include <minmax.h>
 #include <thirdparty.h>
+#include <steam_voice.h>
 
 #define VOICE_DATA_SZ 0xE
 #define OFFSET_TO_VOICE_SZ 0xC
