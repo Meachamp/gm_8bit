@@ -106,7 +106,7 @@ namespace SteamVoice {
 		uint16_t* outLenAddr = (uint16_t*)curWrite;
 		curWrite += 2;
 
-		int compressedBytes = codec->Compress(inputData, inputLen / 2, compressedOut, maxCompressed, false);
+		int compressedBytes = codec->Compress(inputData, inputLen / 2, curWrite, maxWrite - curWrite, false);
 
 		if (compressedBytes <= 0)
 			return -1;
