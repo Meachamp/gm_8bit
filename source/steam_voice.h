@@ -23,7 +23,7 @@ namespace SteamVoice {
 
 		while (curRead < maxRead) {
 			//Check to make sure we have one byte of buffer space remaining at least
-			if (curRead + 1 >= maxRead)
+			if (curRead + 1 > maxRead)
 				return -1;
 
 			//Get the current packet opcode
@@ -33,7 +33,7 @@ namespace SteamVoice {
 			switch (opcode) {
 			case OP_SILENCE: {
 				//Contains a number of silence samples to add to the decompressed data. Skip for now.
-				if (curRead + 2 >= maxRead)
+				if (curRead + 2 > maxRead)
 					return -1;
 
 				curRead += 2;
@@ -41,7 +41,7 @@ namespace SteamVoice {
 			}
 			case OP_SAMPLERATE: {
 				//Contains the samplerate for the stream. Always 24000 as far as I can tell.
-				if (curRead + 2 >= maxRead)
+				if (curRead + 2 > maxRead)
 					return -1;
 
 				uint16_t sampleRate = *(uint16_t*)curRead;
@@ -51,11 +51,12 @@ namespace SteamVoice {
 			}
 			case OP_CODEC_OPUSPLC: {
 				//Contains length plus a number of steam opus frames
-				if (curRead + 2 >= maxRead)
+				if (curRead + 2 > maxRead)
 					return -1;
 
 				uint16_t frameDataLen = *(uint16_t*)curRead;
-				if (curRead + frameDataLen >= maxRead)
+				curRead += 2;
+				if (curRead + frameDataLen > maxRead)
 					return -1;
 
 				int decompressedSamples = codec->Decompress(curRead, frameDataLen, curWrite, maxWrite-curWrite);
@@ -79,14 +80,14 @@ namespace SteamVoice {
 		char* curWrite = compressedOut;
 		char* maxWrite = compressedOut + maxCompressed;
 
-		if (curWrite + sizeof(uint64_t) >= maxWrite)
+		if (curWrite + sizeof(uint64_t) > maxWrite)
 			return -1;
 
 		*(uint64_t*)curWrite = steamid;
 		curWrite += sizeof(uint64_t);
 
 		//Write sample rate operation
-		if (curWrite + 3 >= maxWrite)
+		if (curWrite + 3 > maxWrite)
 			return -1;
 
 		*curWrite = OP_SAMPLERATE;
@@ -95,7 +96,7 @@ namespace SteamVoice {
 		curWrite += 2;
 
 		//Write opus codec operation
-		if (curWrite + 3 >= maxWrite)
+		if (curWrite + 3 > maxWrite)
 			return -1;
 
 		*curWrite = OP_CODEC_OPUSPLC;
@@ -113,11 +114,13 @@ namespace SteamVoice {
 		curWrite += compressedBytes;
 		*outLenAddr = compressedBytes;
 
-		if (curWrite + sizeof(CRC32_t) >= maxWrite)
+		if (curWrite + sizeof(CRC32_t) > maxWrite)
 			return -1;
 
 		CRC32_t crc = CRC32_ProcessSingleBuffer(compressedOut, curWrite - compressedOut);
 		*(CRC32_t*)(curWrite) = crc;
+
+		curWrite += sizeof(CRC32_t);
 
 		return curWrite - compressedOut;
 	}
