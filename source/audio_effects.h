@@ -27,5 +27,6 @@ namespace AudioEffects {
 			outIdx++;
 		}
 		std::memcpy(inBuffer, tempBuf, outIdx * 2);
+		samples /= 2;
 	}
 }
