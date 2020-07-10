@@ -89,7 +89,6 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		int samples = bytesDecompressed / 2;
 		if (bytesDecompressed <= 0) {
 			//Just hit the trampoline at this point.
-			std::cout << "Decompression failed: " << samples << std::endl;
 			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
 		}
 
