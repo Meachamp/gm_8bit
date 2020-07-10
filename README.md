@@ -2,9 +2,9 @@
 A module for manipulating voice data in Garry's Mod. Currently it is in the early stages of prototyping, and many things may be subject to change. 
 
 # What does it do?
-gm_8bit is designed to a starting point for any kind of voice stream manipulation you might want to do on a Garry's Mod server (or any source engine server, with a bit of adjustment). 
+gm_8bit is designed to be a starting point for any kind of voice stream manipulation you might want to do on a Garry's Mod server (or any source engine server, with a bit of adjustment). 
 
-gm_8bit can decompress and recompress steam voice packets. It includes an SV_BroadcastVoiceData hook to allow server operators to incercept and manipulate this voice data. It makes several things possible, include:
+gm_8bit can decompress and recompress steam voice packets. It includes an SV_BroadcastVoiceData hook to allow server operators to incercept and manipulate this voice data. It makes several things possible, including:
 * Relaying server voice data to external locations
 * Performing voice recognition and producing transcripts
 * Recording voice data in compressed or uncompressed form
