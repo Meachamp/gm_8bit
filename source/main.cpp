@@ -49,7 +49,7 @@ Net* net_handl = nullptr;
 typedef void (*SV_BroadcastVoiceData)(IClient* cl, int nBytes, char* data, int64 xuid);
 Detouring::Hook detour_BroadcastVoiceData;
 
-std::unordered_map<int, IVoiceCodec*> afflicted_players;
+std::unordered_map<int, std::tuple<IVoiceCodec*, int>> afflicted_players;
 
 void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	//Check if the player is in the set of enabled players.
@@ -79,7 +79,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	}
 
 	if (afflicted_players.find(uid) != afflicted_players.end()) {
-		IVoiceCodec* codec = afflicted_players.at(uid);
+		IVoiceCodec* codec = std::get<0>(afflicted_players.at(uid));
 
 		if(nBytes < STEAM_PCKT_SZ) {
 			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
@@ -96,8 +96,18 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 			std::cout << "Decompressed samples " << samples << std::endl;
 		#endif
 
-		//Bit crush the stream
-		AudioEffects::BitCrush((uint16_t*)&decompressedBuffer, samples, crushFactor, gainFactor);
+		//Apply audio effect
+		int eff = std::get<1>(afflicted_players.at(uid));
+		switch (eff) {
+		case AudioEffects::EFF_BITCRUSH:
+			AudioEffects::BitCrush((uint16_t*)&decompressedBuffer, samples, crushFactor, gainFactor);
+			break;
+		case AudioEffects::EFF_DESAMPLE:
+			AudioEffects::Desample((uint16_t*)&decompressedBuffer, samples);
+			break;
+		default:
+			break;
+		}		
 
 		//Recompress the stream
 		uint64_t steamid = *(uint64_t*)data;
@@ -138,32 +148,33 @@ LUA_FUNCTION_STATIC(eightbit_getcrush) {
 	return 1;
 }
 
-LUA_FUNCTION_STATIC(eightbit_enable8bit) {
+LUA_FUNCTION_STATIC(eightbit_enableEffect) {
 	int id = LUA->GetNumber(1);
-	bool b = LUA->GetBool(2);
+	int eff = LUA->GetNumber(2);
 
-	if (afflicted_players.find(id) != afflicted_players.end() && b) {
+	if (afflicted_players.find(id) != afflicted_players.end()) {
+		if (eff == AudioEffects::EFF_NONE) {
+			IVoiceCodec* codec = std::get<0>(afflicted_players.at(id));
+			codec->Release();
+			afflicted_players.erase(id);
+		}
+		else {
+			std::get<1>(afflicted_players.at(id)) = eff;
+		}
 		return 0;
 	}
-
-	if (b) {
+	else if(eff != AudioEffects::EFF_NONE) {
 		IVoiceCodec* codec = func_CreateOpusPLCCodec();
 		codec->Init(5, 24000);
-		afflicted_players.insert(std::pair<int, IVoiceCodec*>(id, codec));
+		afflicted_players.insert(std::pair<int, std::tuple<IVoiceCodec*, int>>(id, std::tuple<IVoiceCodec*, int>(codec, eff)));
 	}
-	else if(afflicted_players.find(id) != afflicted_players.end()) {
-		IVoiceCodec* codec = afflicted_players.at(id);
-		codec->Release();
-		afflicted_players.erase(id);
-	}
-
 	return 0;
 }
 
 
 GMOD_MODULE_OPEN()
 {
-	afflicted_players = std::unordered_map<int, IVoiceCodec*>();
+	afflicted_players = std::unordered_map<int, std::tuple<IVoiceCodec*, int>>();
 
 	engine_loader = new SourceSDK::ModuleLoader("engine");
 	SymbolFinder symfinder;
@@ -214,8 +225,8 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(eightbit_getcrush);
 		LUA->SetTable(-3);
 
-		LUA->PushString("Enable8Bit");
-		LUA->PushCFunction(eightbit_enable8bit);
+		LUA->PushString("EnableEffect");
+		LUA->PushCFunction(eightbit_enableEffect);
 		LUA->SetTable(-3);
 
 		LUA->PushString("EnableBroadcast");
@@ -242,8 +253,9 @@ GMOD_MODULE_CLOSE()
 	detour_BroadcastVoiceData.Destroy();
 
 	for (auto& p : afflicted_players) {
-		if (p.second != nullptr) {
-			p.second->Release();
+		IVoiceCodec* codec = std::get<0>(p.second);
+		if (codec != nullptr) {
+			codec->Release();
 		}
 	}
 
