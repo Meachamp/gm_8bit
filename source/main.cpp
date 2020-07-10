@@ -236,6 +236,18 @@ GMOD_MODULE_OPEN()
 		LUA->PushString("SetGainFactor");
 		LUA->PushCFunction(eightbit_gain);
 		LUA->SetTable(-3);
+
+		LUA->PushString("EFF_NONE");
+		LUA->PushNumber(AudioEffects::EFF_NONE);
+		LUA->SetTable(-3);
+
+		LUA->PushString("EFF_DESAMPLE");
+		LUA->PushNumber(AudioEffects::EFF_DESAMPLE);
+		LUA->SetTable(-3);
+
+		LUA->PushString("EFF_BITCRUSH");
+		LUA->PushNumber(AudioEffects::EFF_BITCRUSH);
+		LUA->SetTable(-3);
 	LUA->SetTable(-3);
 	LUA->Pop();
 
