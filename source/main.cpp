@@ -21,7 +21,7 @@
 	static const uint8_t GMOD_SV_BroadcastVoice_sym_sig[] = "\x55\x8B\xEC\x8B\x0D****\x83\xEC\x58\x81\xF9****";
 	static const size_t GMOD_SV_BroadcastVoice_siglen = sizeof(GMOD_SV_BroadcastVoice_sym_sig) - 1;
 
-	static const uint8_t CreateOpusPLCCodec_sig[] = "\x56\x6A\x48\xE8\x98\x1B\x49\x00\x8B\xF0\x83\xC4\x04\x33\xC0\x85";
+	static const uint8_t CreateOpusPLCCodec_sig[] = "\x56\x6A\x48\xE8****\x8B\xF0\x83\xC4\x04\x33\xC0\x85\xF6**\x50\x50\x50\x8D\x4E\x18******\xC6\x46\x04\x01";
 	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
 #endif
 
