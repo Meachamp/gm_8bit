@@ -121,6 +121,4 @@ namespace SteamVoice {
 
 		return curWrite - compressedOut;
 	}
-
-
 }

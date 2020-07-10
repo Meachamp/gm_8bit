@@ -103,6 +103,10 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		//Recompress the stream
 		uint64_t steamid = *(uint64_t*)data;
 		int bytesWritten = SteamVoice::CompressIntoBuffer(steamid, codec, decompressedBuffer, bytesDecompressed, recompressBuffer, sizeof(recompressBuffer), 24000);
+		if (bytesWritten <= 0) {
+			std::cout << "Recompression failed: " << bytesWritten << std::endl;
+			return detour_BroadcastVoiceData.GetTrampoline<SV_BroadcastVoiceData>()(cl, nBytes, data, xuid);
+		}
 
 		#ifdef _DEBUG
 			std::cout << "Retransmitted pckt size: " << bytesWritten << std::endl;
