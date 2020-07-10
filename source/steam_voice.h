@@ -66,4 +66,39 @@ namespace SteamVoice {
 
 		return curWrite - decompressedOut;
 	}
+
+	int CompressIntoBuffer(IVoiceCodec* codec, char* inputData, int inputLen, char* compressedOut, int maxCompressed, int sampleRate) {
+		char* curWrite = compressedOut;
+		char* maxWrite = compressedOut + maxCompressed;
+
+		//Write sample rate operation
+		if (curWrite + 3 >= maxWrite)
+			return -1;
+
+		*curWrite = OP_SAMPLERATE;
+		curWrite++;
+		*(uint16_t*)curWrite = sampleRate;
+		curWrite += 2;
+
+		//Write opus codec operation
+		if (curWrite + 3 >= maxWrite)
+			return -1;
+
+		*curWrite = OP_CODEC_OPUSPLC;
+		curWrite++;
+
+		//Setup address to write to with compression length 
+		uint16_t* outLenAddr = (uint16_t*)curWrite;
+		curWrite += 2;
+
+		int compressedBytes = codec->Compress(inputData, inputLen / 2, compressedOut, maxCompressed, false);
+
+		if (compressedBytes <= 0)
+			return -1;
+
+		curWrite += compressedBytes;
+		*outLenAddr = compressedBytes;
+
+		return curWrite - compressedOut;
+	}
 }
