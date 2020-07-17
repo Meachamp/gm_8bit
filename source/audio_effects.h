@@ -23,16 +23,16 @@ namespace AudioEffects {
 	}
 
 	static uint16_t tempBuf[10 * 1024];
-	void Desample(uint16_t* inBuffer, int& samples) {
-		assert(samples / 2 + 1 <= sizeof(tempBuf));
+	void Desample(uint16_t* inBuffer, int& samples, int desampleRate = 2) {
+		assert(samples / desampleRate + 1 <= sizeof(tempBuf));
 		int outIdx = 0;
 		for (int i = 0; i < samples; i++) {
-			if (i % 2 == 1) continue;
+			if (i % desampleRate == 0) continue;
 
 			tempBuf[outIdx] = inBuffer[i];
 			outIdx++;
 		}
 		std::memcpy(inBuffer, tempBuf, outIdx * 2);
-		samples /= 2;
+		samples = outIdx;
 	}
 }
