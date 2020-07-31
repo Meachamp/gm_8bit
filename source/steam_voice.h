@@ -44,8 +44,9 @@ namespace SteamVoice {
 				if (curRead + sizeof(uint16_t) > maxRead)
 					return -1;
 
-				uint16_t sampleRate = *(uint16_t*)curRead;
-				sampleRate;
+				//Something like this could be used to read the sample rate if we needed it. 
+				//uint16_t sampleRate = *(uint16_t*)curRead;
+
 				curRead += sizeof(uint16_t);
 				break;
 			}
