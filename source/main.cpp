@@ -28,7 +28,7 @@
 #ifdef SYSTEM_LINUX
 	#include <dlfcn.h>
 	static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
-	static const uint8_t CreateOpusPLCCodec_sig[] = "\x57\x56\x53\xE8\x03\xDC\xD0\xFF\x81\xC3\x54\xE9\x40\x01\x83\xEC";
+	static const uint8_t CreateOpusPLCCodec_sig[] = "\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x50\x00\x00\x00\xE8****\x31\xD2\x89\xC6\x8D\x83****\xC6\x46\x04\x01";
 	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
 #endif
 
