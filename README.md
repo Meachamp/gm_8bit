@@ -26,6 +26,6 @@ Both windows and linux builds are available with every commit. See the actions p
 
 `eightbit.EFF_NONE` No audio effect.
 
-`eightbit.EFF_DESAMPLE` Desamples audio, effectively doubling frequency/
+`eightbit.EFF_DESAMPLE` Desamples audio, effectively doubling frequency.
 
 `eightbit.EFF_BITCRUSH` Deep fries the audio. Governed by a gain factor and a quantization factor. 
