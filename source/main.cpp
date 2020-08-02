@@ -191,7 +191,7 @@ GMOD_MODULE_OPEN()
 
 	#ifdef SYSTEM_LINUX
 		SourceSDK::ModuleLoader steamclient_loader("steamclient");
-		if(steamclient_loader->GetModule() == nullptr) {
+		if(steamclient_loader.GetModule() == nullptr) {
 			LUA->ThrowError("Could not load steamclient!");
 		}
 		void* codecPtr = symfinder.FindPattern(steamclient_loader.GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
