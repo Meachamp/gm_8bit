@@ -13,6 +13,7 @@
 #include <minmax.h>
 #include <thirdparty.h>
 #include <steam_voice.h>
+#include <eightbit_state.h>
 
 #define STEAM_PCKT_SZ sizeof(uint64_t) + sizeof(CRC32_t)
 
@@ -32,24 +33,17 @@
 	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
 #endif
 
-static int crushFactor = 350;
-static float gainFactor = 1.2;
-static bool broadcastPackets = false;
-
 static char decompressedBuffer[20 * 1024];
 static char recompressBuffer[20 * 1024];
 
 typedef IVoiceCodec* (*CreateOpusPLCCodecProto)();
 CreateOpusPLCCodecProto func_CreateOpusPLCCodec;
 
-SourceSDK::ModuleLoader* steamclient_loader = nullptr;
-SourceSDK::ModuleLoader* engine_loader = nullptr;
 Net* net_handl = nullptr;
+EightbitState* g_eightbit = nullptr;
 
 typedef void (*SV_BroadcastVoiceData)(IClient* cl, int nBytes, char* data, int64 xuid);
 Detouring::Hook detour_BroadcastVoiceData;
-
-std::unordered_map<int, std::tuple<IVoiceCodec*, int>> afflicted_players;
 
 void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	//Check if the player is in the set of enabled players.
@@ -63,7 +57,8 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	}
 #endif
 
-	if (broadcastPackets && nBytes > sizeof(uint64_t)) {
+	auto& afflicted_players = g_eightbit->afflictedPlayers;
+	if (g_eightbit->broadcastPackets && nBytes > sizeof(uint64_t)) {
 		//Get the user's steamid64, put it at the beginning of the buffer. 
 		//Notice that we don't use the conveniently provided one in the voice packet. The client can manipulate that one.
 		uint64_t id64 = *(uint64_t*)((char*)cl + 181);
@@ -100,10 +95,10 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		int eff = std::get<1>(afflicted_players.at(uid));
 		switch (eff) {
 		case AudioEffects::EFF_BITCRUSH:
-			AudioEffects::BitCrush((uint16_t*)&decompressedBuffer, samples, crushFactor, gainFactor);
+			AudioEffects::BitCrush((uint16_t*)&decompressedBuffer, samples, g_eightbit->crushFactor, g_eightbit->gainFactor);
 			break;
 		case AudioEffects::EFF_DESAMPLE:
-			AudioEffects::Desample((uint16_t*)&decompressedBuffer, samples);
+			AudioEffects::Desample((uint16_t*)&decompressedBuffer, samples, g_eightbit->desampleRate);
 			break;
 		default:
 			break;
@@ -129,29 +124,35 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 }
 
 LUA_FUNCTION_STATIC(eightbit_crush) {
-	crushFactor = (int)LUA->GetNumber(1);
+	g_eightbit->crushFactor = (int)LUA->GetNumber(1);
 	return 0;
 }
 
 LUA_FUNCTION_STATIC(eightbit_gain) {
-	gainFactor = (float)LUA->GetNumber(1);
+	g_eightbit->gainFactor = (float)LUA->GetNumber(1);
 	return 0;
 }
 
 LUA_FUNCTION_STATIC(eightbit_broadcast) {
-	broadcastPackets = LUA->GetBool(1);
+	g_eightbit->broadcastPackets = LUA->GetBool(1);
 	return 0;
 }
 
 LUA_FUNCTION_STATIC(eightbit_getcrush) {
-	LUA->PushNumber(crushFactor);
+	LUA->PushNumber(g_eightbit->crushFactor);
 	return 1;
+}
+
+LUA_FUNCTION_STATIC(eightbit_setdesamplerate) {
+	g_eightbit->desampleRate = (int)LUA->GetNumber(1);
+	return 0;
 }
 
 LUA_FUNCTION_STATIC(eightbit_enableEffect) {
 	int id = LUA->GetNumber(1);
 	int eff = LUA->GetNumber(2);
 
+	auto& afflicted_players = g_eightbit->afflictedPlayers;
 	if (afflicted_players.find(id) != afflicted_players.end()) {
 		if (eff == AudioEffects::EFF_NONE) {
 			IVoiceCodec* codec = std::get<0>(afflicted_players.at(id));
@@ -174,26 +175,26 @@ LUA_FUNCTION_STATIC(eightbit_enableEffect) {
 
 GMOD_MODULE_OPEN()
 {
-	afflicted_players = std::unordered_map<int, std::tuple<IVoiceCodec*, int>>();
+	g_eightbit = new EightbitState();
 
-	engine_loader = new SourceSDK::ModuleLoader("engine");
+	SourceSDK::ModuleLoader engine_loader("engine");
 	SymbolFinder symfinder;
 
 	#ifdef SYSTEM_WINDOWS
-		void* sv_bcast = symfinder.FindPattern(engine_loader->GetModule(), GMOD_SV_BroadcastVoice_sym_sig, GMOD_SV_BroadcastVoice_siglen);
+		void* sv_bcast = symfinder.FindPattern(engine_loader.GetModule(), GMOD_SV_BroadcastVoice_sym_sig, GMOD_SV_BroadcastVoice_siglen);
 	#elif SYSTEM_LINUX
-		void* sv_bcast = symfinder.FindSymbol(engine_loader->GetModule(), GMOD_SV_BroadcastVoice_sym_sig);
+		void* sv_bcast = symfinder.FindSymbol(engine_loader.GetModule(), GMOD_SV_BroadcastVoice_sym_sig);
 	#endif
 	if (sv_bcast == nullptr) {
 		LUA->ThrowError("Could not locate SV_BrodcastVoice symbol!");
 	}
 
 	#ifdef SYSTEM_LINUX
-		steamclient_loader = new SourceSDK::ModuleLoader("steamclient");
+		SourceSDK::ModuleLoader steamclient_loader("steamclient");
 		if(steamclient_loader->GetModule() == nullptr) {
 			LUA->ThrowError("Could not load steamclient!");
 		}
-		void* codecPtr = symfinder.FindPattern(steamclient_loader->GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
+		void* codecPtr = symfinder.FindPattern(steamclient_loader.GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
 	#elif SYSTEM_WINDOWS
 		//Windows loads steamclient from a directory outside of the normal search paths. 
 		//This is our workaround.
@@ -237,6 +238,10 @@ GMOD_MODULE_OPEN()
 		LUA->PushCFunction(eightbit_gain);
 		LUA->SetTable(-3);
 
+		LUA->PushString("SetDesampleRate");
+		LUA->PushCFunction(eightbit_setdesamplerate);
+		LUA->SetTable(-3);
+
 		LUA->PushString("EFF_NONE");
 		LUA->PushNumber(AudioEffects::EFF_NONE);
 		LUA->SetTable(-3);
@@ -264,18 +269,15 @@ GMOD_MODULE_CLOSE()
 {
 	detour_BroadcastVoiceData.Destroy();
 
-	for (auto& p : afflicted_players) {
+	for (auto& p : g_eightbit->afflictedPlayers) {
 		IVoiceCodec* codec = std::get<0>(p.second);
 		if (codec != nullptr) {
 			codec->Release();
 		}
 	}
 
-	afflicted_players.clear();
-
-	delete steamclient_loader;
-	delete engine_loader;
 	delete net_handl;
+	delete g_eightbit;
 
 	return 0;
 }
