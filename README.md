@@ -24,8 +24,10 @@ Both windows and linux builds are available with every commit. See the actions p
 
 `eightbit.SetCrushFactor(number)` Sets the bitcrush factor for the reference bitcrush implementation.
 
+`eightbit.SetDesampleRate(number)` Sets the desample multiplier, used by EFF_DESAMPLE.
+
 `eightbit.EFF_NONE` No audio effect.
 
-`eightbit.EFF_DESAMPLE` Desamples audio, effectively doubling frequency.
+`eightbit.EFF_DESAMPLE` Desamples audio, new frequency is 1/(1-1/n)
 
 `eightbit.EFF_BITCRUSH` Deep fries the audio. Governed by a gain factor and a quantization factor. 
