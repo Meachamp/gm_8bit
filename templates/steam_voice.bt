@@ -1,14 +1,14 @@
 //------------------------------------------------
 //--- 010 Editor v10.0.1 Binary Template
 //
-//      File: 
-//   Authors: 
-//   Version: 
-//   Purpose: 
-//  Category: 
-// File Mask: 
-//  ID Bytes: 
-//   History: 
+//      File:
+//   Authors:
+//   Version:
+//   Purpose:
+//  Category:
+// File Mask:
+//  ID Bytes:
+//   History:
 //------------------------------------------------
 
 typedef enum <char> {
@@ -21,15 +21,14 @@ typedef enum <char> {
     OP_CODEC_RAW = 3,
     OP_CODEC_OPUS = 5,
     OP_CODEC_SILK = 4
-
 } OPCODE;
 
 typedef struct {
-	short frame_len;
-	
-	if(frame_len != -1) {
+    short frame_len;
+
+    if(frame_len != -1) {
         short sequence_id;
-		char data[frame_len];
+        char data[frame_len];
     }
 } OPUSFRAME;
 
@@ -41,20 +40,19 @@ typedef struct {
 
     if(op == OP_CODEC_OPUSPLC || op == OP_CODEC_OPUS || op == OP_CODEC_LEGACY || op == OP_CODEC_SILK) {
         short data_len;
-		
-		if(op == OP_CODEC_OPUSPLC) {
-			local int start = FTell();
-			
-			while(FTell() < start + data_len) {
-				OPUSFRAME frame;
-				if(frame.frame_len == -1) {
+
+        if(op == OP_CODEC_OPUSPLC) {
+            local int start = FTell();
+
+            while(FTell() < start + data_len) {
+                OPUSFRAME frame;
+                if(frame.frame_len == -1) {
                     break;
                 }
-					
-			}
-		} else {
-			char data[data_len];
-		}
+            }
+        } else {
+            char data[data_len];
+        }
     }
 
     if(op == OP_CODEC_UNK) {
