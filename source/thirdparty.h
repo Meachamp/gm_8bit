@@ -1,3 +1,4 @@
+#pragma once
 #ifdef __linux
 #include <dlfcn.h>
 #define THIRDPARTY_LINK
