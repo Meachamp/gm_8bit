@@ -16,6 +16,7 @@ CreateWorkspace({name = "eightbit"})
 		IncludeDetouring()
 		IncludeScanning()
 		IncludeLuaShared()
+		IncludeHelpersExtended()
 
 		filter("system:windows")
 			links("ws2_32")

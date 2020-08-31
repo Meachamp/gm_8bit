@@ -14,13 +14,17 @@
 #include <thirdparty.h>
 #include <steam_voice.h>
 #include <eightbit_state.h>
+#include <GarrysMod/Symbol.hpp>
 
 #define STEAM_PCKT_SZ sizeof(uint64_t) + sizeof(CRC32_t)
 
 #ifdef SYSTEM_WINDOWS
 	#include <windows.h>
-	static const uint8_t GMOD_SV_BroadcastVoice_sym_sig[] = "\x55\x8B\xEC\x8B\x0D****\x83\xEC\x58\x81\xF9****";
-	static const size_t GMOD_SV_BroadcastVoice_siglen = sizeof(GMOD_SV_BroadcastVoice_sym_sig) - 1;
+
+	const std::vector<Symbol> BroadcastVoiceSyms = {
+		Symbol::FromSignature("\x55\x8B\xEC\x8B\x0D****\x83\xEC\x58\x81\xF9****"),
+		Symbol::FromSignature("\x55\x8B\xEC\xA1****\x83\xEC\x50")
+	};
 
 	static const uint8_t CreateOpusPLCCodec_sig[] = "\x56\x6A\x48\xE8****\x8B\xF0\x83\xC4\x04\x33\xC0\x85\xF6**\x50\x50\x50\x8D\x4E\x18******\xC6\x46\x04\x01";
 	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
@@ -28,7 +32,10 @@
 
 #ifdef SYSTEM_LINUX
 	#include <dlfcn.h>
-	static const char* GMOD_SV_BroadcastVoice_sym_sig = "_Z21SV_BroadcastVoiceDataP7IClientiPcx";
+	const std::vector<Symbol> BroadcastVoiceSyms = {
+		Symbol::FromName("_Z21SV_BroadcastVoiceDataP7IClientiPcx")
+	};
+
 	static const uint8_t CreateOpusPLCCodec_sig[] = "\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x50\x00\x00\x00\xE8****\x31\xD2\x89\xC6\x8D\x83****\xC6\x46\x04\x01";
 	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
 #endif
@@ -180,13 +187,17 @@ GMOD_MODULE_OPEN()
 	SourceSDK::ModuleLoader engine_loader("engine");
 	SymbolFinder symfinder;
 
-	#ifdef SYSTEM_WINDOWS
-		void* sv_bcast = symfinder.FindPattern(engine_loader.GetModule(), GMOD_SV_BroadcastVoice_sym_sig, GMOD_SV_BroadcastVoice_siglen);
-	#elif SYSTEM_LINUX
-		void* sv_bcast = symfinder.FindSymbol(engine_loader.GetModule(), GMOD_SV_BroadcastVoice_sym_sig);
-	#endif
+	void* sv_bcast = nullptr;
+
+	for (const auto& sym : BroadcastVoiceSyms) {
+		sv_bcast = symfinder.Resolve(engine_loader.GetModule(), sym.name.c_str(), sym.length);
+
+		if (sv_bcast)
+			break;
+	}
+
 	if (sv_bcast == nullptr) {
-		LUA->ThrowError("Could not locate SV_BrodcastVoice symbol!");
+		LUA->ThrowError("Could not locate SV_BroadcastVoice symbol!");
 	}
 
 	#ifdef SYSTEM_LINUX
