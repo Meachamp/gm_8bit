@@ -26,8 +26,9 @@
 		Symbol::FromSignature("\x55\x8B\xEC\xA1****\x83\xEC\x50")
 	};
 
-	static const uint8_t CreateOpusPLCCodec_sig[] = "\x56\x6A\x48\xE8****\x8B\xF0\x83\xC4\x04\x33\xC0\x85\xF6**\x50\x50\x50\x8D\x4E\x18******\xC6\x46\x04\x01";
-	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
+	const std::vector<Symbol> CreateOpusPLCSyms = {
+		Symbol::FromSignature("\x56\x6A\x48\xE8****\x8B\xF0\x83\xC4\x04\x33\xC0\x85\xF6**\x50\x50\x50\x8D\x4E\x18******\xC6\x46\x04\x01")
+	};
 #endif
 
 #ifdef SYSTEM_LINUX
@@ -36,8 +37,10 @@
 		Symbol::FromName("_Z21SV_BroadcastVoiceDataP7IClientiPcx")
 	};
 
-	static const uint8_t CreateOpusPLCCodec_sig[] = "\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x50\x00\x00\x00\xE8****\x31\xD2\x89\xC6\x8D\x83****\xC6\x46\x04\x01";
-	static const size_t CreateOpusPLCCodec_siglen = sizeof(CreateOpusPLCCodec_sig) - 1;
+	const std::vector<Symbol> CreateOpusPLCSyms = {
+		Symbol::FromSignature("\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x50\x00\x00\x00\xE8****\x31\xD2\x89\xC6\x8D\x83****\xC6\x46\x04\x01")
+	};
+
 #endif
 
 static char decompressedBuffer[20 * 1024];
@@ -200,12 +203,14 @@ GMOD_MODULE_OPEN()
 		LUA->ThrowError("Could not locate SV_BroadcastVoice symbol!");
 	}
 
+	void* codecPtr = nullptr;
+
 	#ifdef SYSTEM_LINUX
 		SourceSDK::ModuleLoader steamclient_loader("steamclient");
 		if(steamclient_loader.GetModule() == nullptr) {
 			LUA->ThrowError("Could not load steamclient!");
 		}
-		void* codecPtr = symfinder.FindPattern(steamclient_loader.GetModule(), CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
+		void* steamlib = steamclient_loader.GetModule();
 	#elif SYSTEM_WINDOWS
 		//Windows loads steamclient from a directory outside of the normal search paths. 
 		//This is our workaround.
@@ -213,8 +218,13 @@ GMOD_MODULE_OPEN()
 		if (steamlib == nullptr) {
 			LUA->ThrowError("[WIN] Could not load steamclient!");
 		}
-		void* codecPtr = symfinder.FindPattern(steamlib, CreateOpusPLCCodec_sig, CreateOpusPLCCodec_siglen);
 	#endif
+
+	for (const auto& sym : CreateOpusPLCSyms) {
+		codecPtr = symfinder.Resolve(steamlib, sym.name.c_str(), sym.length);
+		if (codecPtr)
+			break;
+	}
 	
 	if (codecPtr == nullptr) {
 		LUA->ThrowError("Could not locate CreateOpusPLCCodec!");
