@@ -22,8 +22,11 @@
 	#include <windows.h>
 
 	const std::vector<Symbol> BroadcastVoiceSyms = {
+#if defined ARCHITECTURE_X86
 		Symbol::FromSignature("\x55\x8B\xEC\x8B\x0D****\x83\xEC\x58\x81\xF9****"),
-		Symbol::FromSignature("\x55\x8B\xEC\xA1****\x83\xEC\x50")
+#elif defined ARCHITECTURE_X86_64
+		Symbol::FromSignature("\x48\x89\x5C\x24?\x56\x57\x41\x56\x48\x81\xEC????\x8B\xF2\x4C\x8B\xF1"),
+#endif
 	};
 
 	const std::vector<Symbol> CreateOpusPLCSyms = {
