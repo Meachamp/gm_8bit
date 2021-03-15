@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches: [ master ]
-    
+
 jobs:
   build-linux:
     runs-on: ubuntu-18.04
@@ -13,7 +13,7 @@ jobs:
       with:
         submodules: recursive
         repository: danielga/garrysmod_common
-        ref: master
+        ref: x86-64-support-sourcesdk
         path: 'garrysmod_common'
     - name: Install Premake
       run: |
@@ -29,10 +29,15 @@ jobs:
       run: |
         cd projects/linux/gmake
         make
+        make config=releasewithsymbols_x86_64
     - uses: actions/upload-artifact@v2
       with:
         name: gmsv_eightbit_linux.dll
         path: projects/linux/gmake/x86/ReleaseWithSymbols/gmsv_eightbit_linux.dll
+    - uses: actions/upload-artifact@v2
+      with:
+        name: gmsv_eightbit_linux64.dll
+        path: projects/linux/gmake/x86_64/ReleaseWithSymbols/gmsv_eightbit_linux64.dll
   build-windows:
     runs-on: windows-latest
     steps:
@@ -41,8 +46,8 @@ jobs:
       with:
         submodules: recursive
         repository: danielga/garrysmod_common
-        ref: master
         path: 'garrysmod_common'
+        ref: x86-64-support-sourcesdk
     - name: Install Premake
       run: |
          curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/premake-5.0.0-alpha15-windows.zip -o premake.zip
@@ -58,4 +63,4 @@ jobs:
       with:
         name: gmsv_eightbit_windows.dll
         path: projects/windows/vs2019/x86/ReleaseWithSymbols/gmsv_eightbit_win32.dll
-         
+
