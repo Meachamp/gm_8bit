@@ -25,7 +25,7 @@
 #if defined ARCHITECTURE_X86
 		Symbol::FromSignature("\x55\x8B\xEC\x8B\x0D****\x83\xEC\x58\x81\xF9****"),
 #elif defined ARCHITECTURE_X86_64
-		Symbol::FromSignature("\x48\x89\x5C\x24?\x56\x57\x41\x56\x48\x81\xEC????\x8B\xF2\x4C\x8B\xF1"),
+		Symbol::FromSignature("\x48\x89\x5C\x24*\x56\x57\x41\x56\x48\x81\xEC****\x8B\xF2\x4C\x8B\xF1"),
 #endif
 	};
 
@@ -45,7 +45,7 @@
 #if defined ARCHITECTURE_X86
 		Symbol::FromSignature("\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x50\x00\x00\x00\xE8****\x31\xD2\x89\xC6\x8D\x83****\xC6\x46\x04\x01"),
 #elif defined ARCHITECTURE_X86_64 
-		Symbol::FromSignature("\x55\xBF****\x53\x48\x83\xEC\x08\xE8****\x31\xD2\x31\xC9\x48\x89\xC3\x31\xF6\x48\x8D\x05****\x66\x89\x53\x20\x31\xD2\x48\x89\x03\x48\x8D\x7B\x28\xC6\x43\x08\x00"),
+		Symbol::FromSignature("\x55\xBF****\x53\x48\x83\xEC\x08\xE8****\x31\xD2\x31\xC9\x48\x89\xC3\x31\xF6\x48\x8D\x05****\x66\x89\x53\x20\x31\xD2\x48\x89\x03\x48\x8D\x7B\x28\xC6\x43\x08\x01"),
 #endif
 	};
 
@@ -222,7 +222,14 @@ GMOD_MODULE_OPEN()
 	#elif SYSTEM_WINDOWS
 		//Windows loads steamclient from a directory outside of the normal search paths. 
 		//This is our workaround.
-		void* steamlib = LoadLibraryA("steamclient.dll");
+		void* steamlib = nullptr; 
+	
+#if defined ARCHITECTURE_X86
+		steamlib = LoadLibraryA("steamclient.dll");
+#elif defined ARCHITECTURE_X86_64
+		steamlib = LoadLibraryA("steamclient64.dll");
+#endif
+
 		if (steamlib == nullptr) {
 			LUA->ThrowError("[WIN] Could not load steamclient!");
 		}
