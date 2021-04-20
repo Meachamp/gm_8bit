@@ -1,4 +1,5 @@
 #include "net.h"
+#include <cstdint>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -30,10 +31,10 @@ Net::Net() {
 #endif
 }
 
-void Net::SendPacket(const char* dest, const char* buffer, uint32_t len) {
+void Net::SendPacket(const char* dest, uint16_t port, const char* buffer, uint32_t len) {
 	sockaddr_in dest_str;
 	dest_str.sin_family = AF_INET;
-	dest_str.sin_port = htons(4000);
+	dest_str.sin_port = htons(port);
 	inet_pton(AF_INET, dest, &dest_str.sin_addr);
 	sendto(m_socket, buffer, len, 0, (sockaddr*)&dest_str, sizeof(dest_str));
 }

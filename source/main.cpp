@@ -15,6 +15,7 @@
 #include <steam_voice.h>
 #include <eightbit_state.h>
 #include <GarrysMod/Symbol.hpp>
+#include <cstdint>
 
 #define STEAM_PCKT_SZ sizeof(uint64_t) + sizeof(CRC32_t)
 
@@ -44,7 +45,7 @@
 	const std::vector<Symbol> CreateOpusPLCSyms = {
 #if defined ARCHITECTURE_X86
 		Symbol::FromSignature("\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x50\x00\x00\x00\xE8****\x31\xD2\x89\xC6\x8D\x83****\xC6\x46\x04\x01"),
-#elif defined ARCHITECTURE_X86_64 
+#elif defined ARCHITECTURE_X86_64
 		Symbol::FromSignature("\x55\xBF****\x53\x48\x83\xEC\x08\xE8****\x31\xD2\x31\xC9\x48\x89\xC3\x31\xF6\x48\x8D\x05****\x66\x89\x53\x20\x31\xD2\x48\x89\x03\x48\x8D\x7B\x28\xC6\x43\x08\x01"),
 #endif
 	};
@@ -65,8 +66,8 @@ Detouring::Hook detour_BroadcastVoiceData;
 
 void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	//Check if the player is in the set of enabled players.
-	//This is (and needs to be) and O(1) operation for how often this function is called. 
-	//If not in the set, just hit the trampoline to ensure default behavior. 
+	//This is (and needs to be) and O(1) operation for how often this function is called.
+	//If not in the set, just hit the trampoline to ensure default behavior.
 	int uid = cl->GetUserID();
 
 #ifdef THIRDPARTY_LINK
@@ -77,7 +78,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 
 	auto& afflicted_players = g_eightbit->afflictedPlayers;
 	if (g_eightbit->broadcastPackets && nBytes > sizeof(uint64_t)) {
-		//Get the user's steamid64, put it at the beginning of the buffer. 
+		//Get the user's steamid64, put it at the beginning of the buffer.
 		//Notice that we don't use the conveniently provided one in the voice packet. The client can manipulate that one.
 		uint64_t id64 = *(uint64_t*)((char*)cl + 181);
 		*(uint64_t*)decompressedBuffer = id64;
@@ -88,7 +89,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 		std::memcpy(decompressedBuffer + sizeof(uint64_t), data + sizeof(uint64_t), toCopy);
 
 		//Finally we'll broadcast our new packet
-		net_handl->SendPacket("127.0.0.1", decompressedBuffer, nBytes);
+ 		net_handl->SendPacket(g_eightbit->ip.c_str(), g_eightbit->port, decompressedBuffer, nBytes);
 	}
 
 	if (afflicted_players.find(uid) != afflicted_players.end()) {
@@ -120,7 +121,7 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 			break;
 		default:
 			break;
-		}		
+		}
 
 		//Recompress the stream
 		uint64_t steamid = *(uint64_t*)data;
@@ -148,6 +149,16 @@ LUA_FUNCTION_STATIC(eightbit_crush) {
 
 LUA_FUNCTION_STATIC(eightbit_gain) {
 	g_eightbit->gainFactor = (float)LUA->GetNumber(1);
+	return 0;
+}
+
+LUA_FUNCTION_STATIC(eightbit_setbroadcastip) {
+	g_eightbit->ip = std::string(LUA->GetString());
+	return 0;
+}
+
+LUA_FUNCTION_STATIC(eightbit_setbroadcastport) {
+	g_eightbit->port = (uint16_t)LUA->GetNumber(1);
 	return 0;
 }
 
@@ -220,10 +231,10 @@ GMOD_MODULE_OPEN()
 		}
 		void* steamlib = steamclient_loader.GetModule();
 	#elif SYSTEM_WINDOWS
-		//Windows loads steamclient from a directory outside of the normal search paths. 
+		//Windows loads steamclient from a directory outside of the normal search paths.
 		//This is our workaround.
-		void* steamlib = nullptr; 
-	
+		void* steamlib = nullptr;
+
 #if defined ARCHITECTURE_X86
 		steamlib = LoadLibraryA("steamclient.dll");
 #elif defined ARCHITECTURE_X86_64
@@ -240,7 +251,7 @@ GMOD_MODULE_OPEN()
 		if (codecPtr)
 			break;
 	}
-	
+
 	if (codecPtr == nullptr) {
 		LUA->ThrowError("Could not locate CreateOpusPLCCodec!");
 	}
@@ -276,6 +287,14 @@ GMOD_MODULE_OPEN()
 
 		LUA->PushString("SetDesampleRate");
 		LUA->PushCFunction(eightbit_setdesamplerate);
+		LUA->SetTable(-3);
+
+		LUA->PushString("SetBroadcastIP");
+		LUA->PushCFunction(eightbit_setbroadcastip);
+		LUA->SetTable(-3);
+
+		LUA->PushString("SetBroadcastPort");
+		LUA->PushCFunction(eightbit_setbroadcastport);
 		LUA->SetTable(-3);
 
 		LUA->PushString("EFF_NONE");
