@@ -1,9 +1,8 @@
 #pragma once
 class IVoiceCodec
 {
-protected:
-	virtual			~IVoiceCodec() {}
 public:
+	virtual			~IVoiceCodec() {}
 	virtual bool	Init(int quality, int sampleRate) = 0;
 	virtual int		GetSampleRate() = 0;
 	virtual void	Release() = 0;
