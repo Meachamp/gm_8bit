@@ -69,9 +69,8 @@ namespace SteamOpus {
                 return 0;
             }
 
-            std::vector<uint16_t> temp_buf;
-            while (!sample_buf.empty())
-                temp_buf.emplace_back(std::move(sample_buf.front()));
+            std::vector<uint16_t> temp_buf(sample_buf.begin(), sample_buf.end());
+            sample_buf.clear();
 
             uint32_t remainder = (temp_buf.size() + nSamples) % FRAME_SIZE_GMOD;
             temp_buf.insert(temp_buf.end(), (uint16_t*)pUncompressed, (uint16_t*)pUncompressed + nSamples);

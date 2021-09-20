@@ -11,9 +11,9 @@ namespace SteamVoice {
 	};
 
 	//Outputs bytes written or -1 on corruption
-	int DecompressIntoBuffer(IVoiceCodec* codec, char* compressedData, int compressedLen, char* decompressedOut, int maxDecompressed) {
-		char* curRead = compressedData;
-		char* maxRead = compressedData + compressedLen;
+	int DecompressIntoBuffer(IVoiceCodec* codec, const char* compressedData, int compressedLen, char* decompressedOut, int maxDecompressed) {
+		const char* curRead = compressedData;
+		const char* maxRead = compressedData + compressedLen;
 		char* curWrite = decompressedOut;
 		char* maxWrite = decompressedOut + maxDecompressed;
 
@@ -77,7 +77,7 @@ namespace SteamVoice {
 	}
 
 	//Outputs number of bytes written or -1 on failure
-	int CompressIntoBuffer(uint64_t steamid, IVoiceCodec* codec, char* inputData, int inputLen, char* compressedOut, int maxCompressed, int sampleRate) {
+	int CompressIntoBuffer(uint64_t steamid, IVoiceCodec* codec, const char* inputData, int inputLen, char* compressedOut, int maxCompressed, int sampleRate) {
 		char* curWrite = compressedOut;
 		char* maxWrite = compressedOut + maxCompressed;
 
@@ -109,7 +109,7 @@ namespace SteamVoice {
 
 		int compressedBytes = codec->Compress(inputData, inputLen / 2, curWrite, maxWrite - curWrite, false);
 
-		if (compressedBytes <= 0)
+		if (compressedBytes < 0)
 			return -1;
 
 		curWrite += compressedBytes;

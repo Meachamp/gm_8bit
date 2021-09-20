@@ -30,10 +30,6 @@
 		Symbol::FromSignature("\x48\x89\x5C\x24*\x56\x57\x41\x56\x48\x81\xEC****\x8B\xF2\x4C\x8B\xF1"),
 #endif
 	};
-
-	const std::vector<Symbol> CreateOpusPLCSyms = {
-		Symbol::FromSignature("\x56\x6A\x48\xE8****\x8B\xF0\x83\xC4\x04\x33\xC0\x85\xF6**\x50\x50\x50\x8D\x4E\x18******\xC6\x46\x04\x01"),
-	};
 #endif
 
 #ifdef SYSTEM_LINUX
@@ -42,22 +38,10 @@
 		Symbol::FromName("_Z21SV_BroadcastVoiceDataP7IClientiPcx"),
 		Symbol::FromSignature("\x55\x48\x8D\x05****\x48\x89\xE5\x41\x57\x41\x56\x41\x89\xF6\x41\x55\x49\x89\xFD\x41\x54\x49\x89\xD4\x53\x48\x89\xCB\x48\x81\xEC****\x48\x8B\x3D****\x48\x39\xC7\x74\x25"),
 	};
-
-	const std::vector<Symbol> CreateOpusPLCSyms = {
-#if defined ARCHITECTURE_X86
-		Symbol::FromSignature("\x57\x56\x53\xE8****\x81\xC3****\x83\xEC\x10\xC7\x04\x24\x50\x00\x00\x00\xE8****\x31\xD2\x89\xC6\x8D\x83****\xC6\x46\x04\x01"),
-#elif defined ARCHITECTURE_X86_64
-		Symbol::FromSignature("\x55\xBF****\x53\x48\x83\xEC\x08\xE8****\x31\xD2\x31\xC9\x48\x89\xC3\x31\xF6\x48\x8D\x05****\x66\x89\x53\x20\x31\xD2\x48\x89\x03\x48\x8D\x7B\x28\xC6\x43\x08\x01"),
-#endif
-	};
-
 #endif
 
 static char decompressedBuffer[20 * 1024];
 static char recompressBuffer[20 * 1024];
-
-typedef IVoiceCodec* (*CreateOpusPLCCodecProto)();
-CreateOpusPLCCodecProto func_CreateOpusPLCCodec;
 
 Net* net_handl = nullptr;
 EightbitState* g_eightbit = nullptr;
@@ -223,42 +207,6 @@ GMOD_MODULE_OPEN()
 	if (sv_bcast == nullptr) {
 		LUA->ThrowError("Could not locate SV_BroadcastVoice symbol!");
 	}
-
-	void* codecPtr = nullptr;
-
-	#ifdef SYSTEM_LINUX
-		SourceSDK::ModuleLoader steamclient_loader("steamclient");
-		if(steamclient_loader.GetModule() == nullptr) {
-			LUA->ThrowError("Could not load steamclient!");
-		}
-		void* steamlib = steamclient_loader.GetModule();
-	#elif SYSTEM_WINDOWS
-		//Windows loads steamclient from a directory outside of the normal search paths.
-		//This is our workaround.
-		void* steamlib = nullptr;
-
-#if defined ARCHITECTURE_X86
-		steamlib = LoadLibraryA("steamclient.dll");
-#elif defined ARCHITECTURE_X86_64
-		steamlib = LoadLibraryA("steamclient64.dll");
-#endif
-
-		if (steamlib == nullptr) {
-			LUA->ThrowError("[WIN] Could not load steamclient!");
-		}
-	#endif
-
-	for (const auto& sym : CreateOpusPLCSyms) {
-		codecPtr = symfinder.Resolve(steamlib, sym.name.c_str(), sym.length);
-		if (codecPtr)
-			break;
-	}
-
-	if (codecPtr == nullptr) {
-		LUA->ThrowError("Could not locate CreateOpusPLCCodec!");
-	}
-
-	func_CreateOpusPLCCodec = (CreateOpusPLCCodecProto)codecPtr;
 
 	detour_BroadcastVoiceData.Create(Detouring::Hook::Target(sv_bcast), reinterpret_cast<void*>(&hook_BroadcastVoiceData));
 	detour_BroadcastVoiceData.Enable();
