@@ -327,7 +327,7 @@ GMOD_MODULE_CLOSE()
 	for (auto& p : g_eightbit->afflictedPlayers) {
 		IVoiceCodec* codec = std::get<0>(p.second);
 		if (codec != nullptr) {
-			codec->Release();
+			delete codec;
 		}
 	}
 
