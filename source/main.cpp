@@ -16,6 +16,7 @@
 #include <eightbit_state.h>
 #include <GarrysMod/Symbol.hpp>
 #include <cstdint>
+#include "opus_framedecoder.h"
 
 #define STEAM_PCKT_SZ sizeof(uint64_t) + sizeof(CRC32_t)
 
@@ -194,7 +195,8 @@ LUA_FUNCTION_STATIC(eightbit_enableEffect) {
 		return 0;
 	}
 	else if(eff != AudioEffects::EFF_NONE) {
-		IVoiceCodec* codec = func_CreateOpusPLCCodec();
+
+		IVoiceCodec* codec = new SteamOpus::Opus_FrameDecoder();
 		codec->Init(5, 24000);
 		afflicted_players.insert(std::pair<int, std::tuple<IVoiceCodec*, int>>(id, std::tuple<IVoiceCodec*, int>(codec, eff)));
 	}
