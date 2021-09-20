@@ -65,7 +65,7 @@ namespace SteamOpus {
             char* pCompressedEnd = pCompressed + maxCompressedBytes;
 
             if (sample_buf.size() + nSamples < FRAME_SIZE_GMOD && !bFinal) {
-                sample_buf.insert(sample_buf.end(), (uint16_t*)pUncompressed, (uint16_t*)pUncompressed + nSamples);
+                sample_buf.insert(sample_buf.end(), (const uint16_t*)pUncompressed, (const uint16_t*)pUncompressed + nSamples);
                 return 0;
             }
 
@@ -73,7 +73,7 @@ namespace SteamOpus {
             sample_buf.clear();
 
             uint32_t remainder = (temp_buf.size() + nSamples) % FRAME_SIZE_GMOD;
-            temp_buf.insert(temp_buf.end(), (uint16_t*)pUncompressed, (uint16_t*)pUncompressed + nSamples);
+            temp_buf.insert(temp_buf.end(), (const uint16_t*)pUncompressed, (const uint16_t*)pUncompressed + nSamples);
 
             if (remainder) {
                 if (bFinal) {
@@ -106,7 +106,7 @@ namespace SteamOpus {
             }
 
             if (bFinal) {
-                this->ResetState();
+                opus_encoder_ctl(enc, OPUS_RESET_STATE);
                 m_encodeSeq = 0;
                 CHK_BUF_WRITE(pCompressed, pCompressedEnd, uint16_t, 0xFFFF);
             }
@@ -123,7 +123,7 @@ namespace SteamOpus {
                 CHK_BUF_ACCESS(len, pCompressed, pEnd, uint16_t);
 
                 if (len == 0xFFFF) {
-                    this->ResetState();
+                    opus_decoder_ctl(dec, OPUS_RESET_STATE);
                     m_seq = 0;
                     continue;
                 }
