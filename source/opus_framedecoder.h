@@ -32,7 +32,7 @@ namespace SteamOpus {
     class Opus_FrameDecoder : public IVoiceCodec {
     private:
         Opus_FrameDecoder(const Opus_FrameDecoder&) {}
-        Opus_FrameDecoder& operator=(const Opus_FrameDecoder&) {}
+        Opus_FrameDecoder& operator=(const Opus_FrameDecoder&) = delete;
 
     public:
         Opus_FrameDecoder() {
