@@ -1,25 +1,23 @@
+#define NO_MALLOC_OVERRIDE
+
 #include <GarrysMod/Lua/Interface.h>
 #include <GarrysMod/FactoryLoader.hpp>
 #include <scanning/symbolfinder.hpp>
 #include <detouring/hook.hpp>
 #include <iostream>
-#include <cbase.h>
-#include <eifacev21.h>
-#include <ivoicecodec.h>
 #include <iclient.h>
 #include <unordered_map>
-#include <audio_effects.h>
-#include <net.h>
-#include <minmax.h>
-#include <thirdparty.h>
-#include <steam_voice.h>
-#include <eightbit_state.h>
+#include "ivoicecodec.h"
+#include "audio_effects.h"
+#include "net.h"
+#include "thirdparty.h"
+#include "steam_voice.h"
+#include "eightbit_state.h"
 #include <GarrysMod/Symbol.hpp>
 #include <cstdint>
 #include "opus_framedecoder.h"
 
 #define STEAM_PCKT_SZ sizeof(uint64_t) + sizeof(CRC32_t)
-
 #ifdef SYSTEM_WINDOWS
 	#include <windows.h>
 
