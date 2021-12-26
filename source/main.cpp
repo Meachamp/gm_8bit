@@ -64,7 +64,13 @@ void hook_BroadcastVoiceData(IClient* cl, uint nBytes, char* data, int64 xuid) {
 	if (g_eightbit->broadcastPackets && nBytes > sizeof(uint64_t)) {
 		//Get the user's steamid64, put it at the beginning of the buffer.
 		//Notice that we don't use the conveniently provided one in the voice packet. The client can manipulate that one.
+
+#if defined ARCHITECTURE_X86
 		uint64_t id64 = *(uint64_t*)((char*)cl + 181);
+#else
+		uint64_t id64 = *(uint64_t*)((char*)cl + 189);
+#endif
+
 		*(uint64_t*)decompressedBuffer = id64;
 
 		//Transfer the packet data to our scratch buffer
