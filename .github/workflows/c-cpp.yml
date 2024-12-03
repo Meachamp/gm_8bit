@@ -33,11 +33,11 @@ jobs:
         cd projects/linux/gmake
         make
         make config=releasewithsymbols_x86_64
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: gmsv_eightbit_linux.dll
         path: projects/linux/gmake/x86/ReleaseWithSymbols/gmsv_eightbit_linux.dll
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: gmsv_eightbit_linux64.dll
         path: projects/linux/gmake/x86_64/ReleaseWithSymbols/gmsv_eightbit_linux64.dll
@@ -62,7 +62,7 @@ jobs:
       run: |
         cd projects/windows/vs2019
         & "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\msbuild.exe" /p:Configuration=ReleaseWithSymbols /p:Platform=Win32 eightbit.sln
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: gmsv_eightbit_windows.dll
         path: projects/windows/vs2019/x86/ReleaseWithSymbols/gmsv_eightbit_win32.dll
@@ -70,7 +70,7 @@ jobs:
       run: |
         cd projects/windows/vs2019
         & "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\msbuild.exe" /p:Configuration=ReleaseWithSymbols /p:Platform=x64 eightbit.sln
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: gmsv_eightbit_win64.dll
         path: projects/windows/vs2019/x86_64/ReleaseWithSymbols/gmsv_eightbit_win64.dll
