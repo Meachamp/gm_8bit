@@ -278,6 +278,7 @@ GMOD_MODULE_OPEN()
 
 GMOD_MODULE_CLOSE()
 {
+	detour_BroadcastVoiceData.Disable();
 	detour_BroadcastVoiceData.Destroy();
 
 	for (auto& p : g_eightbit->afflictedPlayers) {
